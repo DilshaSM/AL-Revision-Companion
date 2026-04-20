@@ -57,11 +57,13 @@ private extension SignInView {
             HStack {
                 Spacer()
 
-                Button("Forgot Password?") {
-                    // Placeholder for later phase
+                NavigationLink {
+                    ForgotPasswordView()
+                } label: {
+                    Text("Forgot Password?")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(AppColors.primary)
                 }
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(AppColors.primary)
             }
 
             if !viewModel.errorMessage.isEmpty {
