@@ -50,7 +50,8 @@ private extension SignInView {
             PasswordField(
                 title: "Password",
                 placeholder: "Enter your password",
-                text: $viewModel.password
+                text: $viewModel.password,
+                textContentType: .password
             )
 
             HStack {

@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "AL Revision Companion" */;
+			buildConfigurationList = 39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "Academic Atelier" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -409,10 +409,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dilsha.alrevisioncompanion";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanion;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_MODULE_NAME = AL_Revision_Companion;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_MODULE_NAME = AL_Revision_Companion;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -439,10 +439,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dilsha.alrevisioncompanion";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanion;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_MODULE_NAME = AL_Revision_Companion;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_MODULE_NAME = AL_Revision_Companion;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -457,7 +457,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dilsha.alrevisioncompanionTests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanionTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -475,7 +475,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dilsha.alrevisioncompanionTests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanionTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -491,7 +491,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dilsha.alrevisioncompanionUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanionUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -507,7 +507,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.dilsha.alrevisioncompanionUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanionUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -519,7 +519,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "AL Revision Companion" */ = {
+		39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "Academic Atelier" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				39F8AEF82F923FC200B4E3D3 /* Debug */,
