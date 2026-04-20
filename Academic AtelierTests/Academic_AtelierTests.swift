@@ -1,12 +1,11 @@
 //
 //  Academic_AtelierTests.swift
-//  Academic AtelierTests
+//  AL Revision CompanionTests
 //
-
 import Testing
-@testable import Academic_Atelier
+@testable import AL_Revision_Companion
 
-struct Academic_AtelierTests {
+struct ALRevisionCompanionTests {
 
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.

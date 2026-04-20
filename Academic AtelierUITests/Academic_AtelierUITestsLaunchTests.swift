@@ -1,11 +1,10 @@
 //
 //  Academic_AtelierUITestsLaunchTests.swift
-//  Academic AtelierUITests
+//  AL Revision CompanionUITests
 //
-
 import XCTest
 
-final class Academic_AtelierUITestsLaunchTests: XCTestCase {
+final class ALRevisionCompanionUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

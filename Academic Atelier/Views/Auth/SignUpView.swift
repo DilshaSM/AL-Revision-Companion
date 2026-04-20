@@ -13,10 +13,27 @@ struct SignUpView: View {
                 Text("Start your personalized A/L revision journey")
                     .foregroundStyle(.secondary)
 
-                AppTextField(title: "Full Name", text: $viewModel.fullName)
-                AppTextField(title: "Email", text: $viewModel.email)
-                PasswordField(title: "Password", text: $viewModel.password)
-                PasswordField(title: "Confirm Password", text: $viewModel.confirmPassword)
+                AppTextField(
+                    title: "Full Name",
+                    placeholder: "Enter your full name",
+                    text: $viewModel.fullName
+                )
+                AppTextField(
+                    title: "Email",
+                    placeholder: "Enter your email",
+                    text: $viewModel.email,
+                    keyboardType: .emailAddress
+                )
+                PasswordField(
+                    title: "Password",
+                    placeholder: "Enter your password",
+                    text: $viewModel.password
+                )
+                PasswordField(
+                    title: "Confirm Password",
+                    placeholder: "Confirm your password",
+                    text: $viewModel.confirmPassword
+                )
 
                 if !viewModel.errorMessage.isEmpty {
                     Text(viewModel.errorMessage)

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AcademicAtelierApp: App {
+struct ALRevisionCompanionApp: App {
     @StateObject private var sessionViewModel = SessionViewModel()
 
     var body: some Scene {

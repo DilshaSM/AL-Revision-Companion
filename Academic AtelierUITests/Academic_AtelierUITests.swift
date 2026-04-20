@@ -1,11 +1,10 @@
 //
 //  Academic_AtelierUITests.swift
-//  Academic AtelierUITests
+//  AL Revision CompanionUITests
 //
-
 import XCTest
 
-final class Academic_AtelierUITests: XCTestCase {
+final class ALRevisionCompanionUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
