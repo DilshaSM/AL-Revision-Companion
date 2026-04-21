@@ -3,6 +3,8 @@ import SwiftUI
 struct SignInView: View {
     @EnvironmentObject var session: SessionViewModel
     @StateObject private var viewModel = AuthViewModel()
+    
+    @State private var showPassword = false
 
     var body: some View {
         ZStack {
@@ -10,15 +12,24 @@ struct SignInView: View {
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 0) {
                     headerSection
+                        .padding(.top, 82)
+
                     formSection
-                    faceIDSection
-                    footerSection
+                        .padding(.top, 56)
+
+                    forgotPasswordSection
+                        .padding(.top, 26)
+
+                    quickAccessSection
+                        .padding(.top, 32)
+
+                    newStudentSection
+                        .padding(.top, 48)
+                        .padding(.bottom, 40)
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 40)
-                .padding(.bottom, 32)
             }
         }
     }
@@ -27,50 +38,45 @@ struct SignInView: View {
 // MARK: - Sections
 private extension SignInView {
     var headerSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("A/L Revision Companion")
-                .font(.system(size: 34, weight: .bold))
+        VStack(spacing: 14) {
+            Text("Sign in to continue")
+                .font(AppTypography.authScreenTitle)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
 
-            Text("Sign in to continue your personalized A/L revision journey.")
-                .font(.subheadline)
+            Text("Access your academic companion")
+                .font(AppTypography.authScreenSubtitle)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
     }
 
     var formSection: some View {
-        VStack(spacing: 18) {
-            AppTextField(
-                title: "Email Address",
-                placeholder: "Enter your email",
+        VStack(spacing: 16) {
+            StyledTextField(
+                title: "EMAIL",
+                placeholder: "name@university.edu",
                 text: $viewModel.email,
-                keyboardType: .emailAddress
+                keyboardType: .emailAddress,
+                isSecure: false
             )
 
-            PasswordField(
-                title: "Password",
-                placeholder: "Enter your password",
+            StyledTextField(
+                title: "PASSWORD",
+                placeholder: "••••••••",
                 text: $viewModel.password,
-                textContentType: .password
+                keyboardType: .default,
+                isSecure: true,
+                isSecureVisible: $showPassword
             )
-
-            HStack {
-                Spacer()
-
-                NavigationLink {
-                    ForgotPasswordView()
-                } label: {
-                    Text("Forgot Password?")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(AppColors.primary)
-                }
-            }
 
             if !viewModel.errorMessage.isEmpty {
                 Text(viewModel.errorMessage)
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
             }
 
             PrimaryButton(title: "Sign In") {
@@ -81,84 +87,100 @@ private extension SignInView {
         }
     }
 
-    var faceIDSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Access")
-                .font(.headline)
+    var forgotPasswordSection: some View {
+        Button("Forgot Password?") {
+            // Later phase
+        }
+        .font(AppTypography.authInlineAction)
+        .foregroundStyle(AppColors.primary)
+        .frame(maxWidth: .infinity)
+    }
+
+    var quickAccessSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("QUICK ACCESS")
+                .font(AppTypography.authSectionLabel)
+                .tracking(2.4)
+                .foregroundStyle(Color(.systemGray))
 
             Button {
-                // Face ID will be wired in a later step
+                // Face ID wiring can be added later
             } label: {
-                HStack(spacing: 14) {
+                HStack(spacing: 18) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(AppColors.primary.opacity(0.12))
-                            .frame(width: 48, height: 48)
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(AppColors.primary.opacity(0.10))
+                            .frame(width: 60, height: 60)
 
                         Image(systemName: "faceid")
-                            .font(.system(size: 22, weight: .semibold))
+                            .frame(width: 30, height: 30)
+                            .font(.system(size: 30, weight: .regular))
                             .foregroundStyle(AppColors.primary)
                     }
 
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Face ID Login")
-                            .font(.headline)
+                            .font(AppTypography.authFeatureTitle)
                             .foregroundStyle(.primary)
 
-                        Text("Use biometric authentication for faster access.")
-                            .font(.footnote)
+                        Text("Use biometric authentication for faster access")
+                            .font(AppTypography.authFeatureCaption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer()
 
                     Image(systemName: "chevron.right")
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Color(.systemGray3))
                 }
-                .padding(18)
-                .background(AppColors.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-                .shadow(
-                    color: .black.opacity(AppTheme.cardShadowOpacity),
-                    radius: 10,
-                    x: 0,
-                    y: 4
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
+                .background(AppColors.cardBackground.opacity(0.02))
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color(.systemGray5), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
         }
     }
 
-    var footerSection: some View {
-        VStack(spacing: 18) {
-            HStack {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.25))
-                    .frame(height: 1)
+    var newStudentSection: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("NEW STUDENT")
+                    .font(AppTypography.authCardEyebrow)
+                    .tracking(1.8)
+                    .foregroundStyle(Color(.systemGray3))
 
-                Text("OR")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Rectangle()
-                    .fill(Color.gray.opacity(0.25))
-                    .frame(height: 1)
+                Text("Join the academy")
+                    .font(AppTypography.authCardTitle)
+                    .foregroundStyle(.primary)
             }
+            
+            Spacer()
 
-            HStack(spacing: 4) {
-                Text("New student?")
-                    .foregroundStyle(.secondary)
-
-                Button("Create Account") {
-                    session.authRoute = .signUp
-                }
-                .fontWeight(.semibold)
-                .foregroundStyle(AppColors.primary)
+            Button {
+                session.authRoute = .signUp
+            } label: {
+                Text("Get Started")
+                    .font(AppTypography.authPillLabel)
+                    .foregroundStyle(AppColors.primary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 32)
+                    .background(AppColors.primary.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
-            .font(.subheadline)
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
         }
-        .padding(.top, 8)
+        .padding(20)
+        .frame(maxWidth: .infinity, minHeight: 76)
+        .background(AppColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
     }
 }
