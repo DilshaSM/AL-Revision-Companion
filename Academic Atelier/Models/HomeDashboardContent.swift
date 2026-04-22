@@ -42,14 +42,16 @@ struct HomeDashboardContent {
                     title: "Quick Revision",
                     subtitle: "Short notes & formulas",
                     icon: "doc.text.fill",
-                    accentStyle: .blue
+                    accentStyle: .blue,
+                    destination: .quickRevision
                 ),
                 .init(
                     id: "recall-tools",
                     title: "Recall Tools",
                     subtitle: "Flashcards & Audio",
                     icon: "speaker.wave.2.fill",
-                    accentStyle: .orange
+                    accentStyle: .orange,
+                    destination: nil
                 )
             ],
             weeklyProgress: .init(
@@ -135,6 +137,7 @@ extension HomeDashboardContent {
         var subtitle: String
         var icon: String
         var accentStyle: HomeAccentStyle
+        var destination: HomeQuickToolDestination?
     }
 
     struct WeeklyProgressContent {
@@ -192,6 +195,10 @@ enum HomeAccentStyle {
     case blue
     case orange
     case biology
+}
+
+enum HomeQuickToolDestination {
+    case quickRevision
 }
 
 private extension HomeDashboardContent {
