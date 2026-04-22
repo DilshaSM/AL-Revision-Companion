@@ -34,4 +34,12 @@ enum AppTypography {
     static let homeButtonSmall = Font.system(size: 12, weight: .bold)
     static let homeButtonMedium = Font.system(size: 14, weight: .bold)
     static let homeButtonLarge = Font.system(size: 18, weight: .bold)
+
+    static let quickRevisionTitle = Font.system(size: 30, weight: .heavy)
+    static let quickRevisionSubtitle = Font.system(size: 16, weight: .regular)
+    static let quickRevisionSectionLabel = Font.system(size: 12, weight: .bold)
+    static let quickRevisionListTitle = Font.system(size: 16, weight: .bold)
+    static let quickRevisionListSubtitle = Font.system(size: 14, weight: .regular)
+    static let quickRevisionRecentMeta = Font.system(size: 11, weight: .bold)
+    static let quickRevisionRecentTitle = Font.system(size: 14, weight: .semibold)
 }

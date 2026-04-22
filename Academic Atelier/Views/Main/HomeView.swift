@@ -70,9 +70,8 @@ private extension HomeView {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.leading, 7)
+            .padding(.leading, 24)
             .padding(.trailing, 24)
-            .padding(.top, 48)
             .padding(.bottom, 16)
         }
     }
