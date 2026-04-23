@@ -51,7 +51,7 @@ struct HomeDashboardContent {
                     subtitle: "Flashcards & Audio",
                     icon: "speaker.wave.2.fill",
                     accentStyle: .orange,
-                    destination: nil
+                    destination: .recallTools
                 )
             ],
             weeklyProgress: .init(
@@ -199,6 +199,7 @@ enum HomeAccentStyle {
 
 enum HomeQuickToolDestination {
     case quickRevision
+    case recallTools
 }
 
 private extension HomeDashboardContent {
