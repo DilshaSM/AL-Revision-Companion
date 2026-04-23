@@ -45,4 +45,12 @@ enum SubjectsPalette {
     static let quizNextDisabled = Color(uiColor: .init(red: 174.0 / 255.0, green: 209.0 / 255.0, blue: 255.0 / 255.0, alpha: 1))
     static let quizPrimaryShadow = Color(uiColor: .init(red: 0.0 / 255.0, green: 122.0 / 255.0, blue: 255.0 / 255.0, alpha: 0.22))
     static let quizFooterSeparator = Color.white.opacity(0.65)
+    static let resultCorrect = Color(uiColor: .init(red: 22.0 / 255.0, green: 163.0 / 255.0, blue: 74.0 / 255.0, alpha: 1))
+    static let resultCorrectBackground = Color(uiColor: .init(red: 239.0 / 255.0, green: 253.0 / 255.0, blue: 244.0 / 255.0, alpha: 1))
+    static let resultIncorrect = Color(uiColor: .init(red: 220.0 / 255.0, green: 38.0 / 255.0, blue: 38.0 / 255.0, alpha: 1))
+    static let resultIncorrectBackground = Color(uiColor: .init(red: 254.0 / 255.0, green: 242.0 / 255.0, blue: 242.0 / 255.0, alpha: 1))
+    static let reviewAnswerBackground = Color(uiColor: .init(red: 243.0 / 255.0, green: 244.0 / 255.0, blue: 252.0 / 255.0, alpha: 1))
+    static let reviewCorrectAnswerBackground = Color(uiColor: .init(red: 240.0 / 255.0, green: 253.0 / 255.0, blue: 244.0 / 255.0, alpha: 1))
+    static let reviewRecommendationBackground = Color(uiColor: .init(red: 230.0 / 255.0, green: 242.0 / 255.0, blue: 251.0 / 255.0, alpha: 1))
+    static let reviewRecommendationStroke = Color(uiColor: .init(red: 176.0 / 255.0, green: 206.0 / 255.0, blue: 243.0 / 255.0, alpha: 1))
 }

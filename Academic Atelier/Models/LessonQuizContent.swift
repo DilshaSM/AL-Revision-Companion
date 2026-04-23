@@ -2,6 +2,8 @@ import Foundation
 
 struct LessonQuizContent: Hashable {
     var id: String
+    var subjectID: String
+    var lessonID: String
     var subjectTitle: String
     var lessonTitle: String
     var questions: [Question]
@@ -10,9 +12,10 @@ struct LessonQuizContent: Hashable {
     static func placeholder(
         forSubjectID subjectID: String,
         subjectTitle: String,
-        lesson: SubjectLessonsContent.Lesson
+        lesson: SubjectLessonsContent.Lesson,
+        allowLocked: Bool = false
     ) -> LessonQuizContent? {
-        guard lesson.isAccessible else { return nil }
+        guard allowLocked || lesson.isAccessible else { return nil }
 
         let questions = questionBank(for: lesson, subjectTitle: subjectTitle)
         guard !questions.isEmpty else { return nil }
@@ -28,6 +31,8 @@ struct LessonQuizContent: Hashable {
 
         return .init(
             id: "\(subjectID)-\(lesson.id)",
+            subjectID: subjectID,
+            lessonID: lesson.id,
             subjectTitle: subjectTitle,
             lessonTitle: lesson.title,
             questions: hydratedQuestions,
@@ -39,15 +44,35 @@ struct LessonQuizContent: Hashable {
 extension LessonQuizContent {
     struct Question: Identifiable, Hashable {
         var id: String
+        var topicTitle: String
         var prompt: String
         var options: [Option]
         var correctOptionID: String
+        var explanation: String
         var selectedOptionID: String?
     }
 
     struct Option: Identifiable, Hashable {
         var id: String
         var text: String
+    }
+}
+
+extension LessonQuizContent {
+    var retryVersion: LessonQuizContent {
+        .init(
+            id: id,
+            subjectID: subjectID,
+            lessonID: lessonID,
+            subjectTitle: subjectTitle,
+            lessonTitle: lessonTitle,
+            questions: questions.map { question in
+                var question = question
+                question.selectedOptionID = nil
+                return question
+            },
+            resumeQuestionIndex: 0
+        )
     }
 }
 
@@ -537,21 +562,73 @@ private extension LessonQuizContent {
 
     static func question(
         id: String,
+        topicTitle: String,
         prompt: String,
         options: [String],
-        correctIndex: Int
+        correctIndex: Int,
+        explanation: String? = nil
     ) -> Question {
         let optionValues = options.enumerated().map { index, title in
             Option(id: "\(id)-option-\(index)", text: title)
         }
+        let correctAnswer = optionValues[correctIndex].text
 
         return .init(
             id: id,
+            topicTitle: topicTitle,
             prompt: prompt,
             options: optionValues,
             correctOptionID: optionValues[correctIndex].id,
+            explanation: explanation ?? "\(correctAnswer) is the best answer for this question.",
             selectedOptionID: nil
         )
     }
-}
 
+    static func question(
+        id: String,
+        prompt: String,
+        options: [String],
+        correctIndex: Int
+    ) -> Question {
+        question(
+            id: id,
+            topicTitle: inferredTopicTitle(for: id),
+            prompt: prompt,
+            options: options,
+            correctIndex: correctIndex
+        )
+    }
+
+    static func inferredTopicTitle(for id: String) -> String {
+        let components = id.split(separator: "-")
+        let prefix = components.first.map(String.init) ?? id
+        let index = components.dropFirst().first.flatMap { Int($0) } ?? 1
+
+        switch prefix {
+        case "trig":
+            switch index {
+            case 1...5: return "Core Ratios"
+            case 6...10: return "Identities & Graphs"
+            default: return "Inverse Functions"
+            }
+        case "bond":
+            switch index {
+            case 1...5: return "Ionic Bonding"
+            case 6...10: return "Covalent Bonding"
+            default: return "Metallic Structures"
+            }
+        case "wave":
+            switch index {
+            case 1...5: return "Wave Evidence"
+            case 6...10: return "Quantum Ideas"
+            default: return "Photoelectric Effect"
+            }
+        default:
+            switch index {
+            case 1...5: return "Core Concepts"
+            case 6...10: return "Applied Reasoning"
+            default: return "Exam Practice"
+            }
+        }
+    }
+}

@@ -46,7 +46,60 @@ struct SubjectsTabView: View {
                         )
                     )
                 case let .quiz(content):
-                    LessonQuizView(content: content)
+                    LessonQuizView(
+                        content: content,
+                        actions: .init(
+                            onComplete: { selectedOptionIDsByQuestionID in
+                                let currentLesson = SubjectLessonsContent.Lesson(
+                                    id: content.lessonID,
+                                    title: content.lessonTitle,
+                                    state: .completed(detailText: "Completed")
+                                )
+                                let nextTopicQuizContent = self.content
+                                    .lessonsContent(forID: content.subjectID)?
+                                    .nextLesson(after: currentLesson)
+                                    .flatMap { self.content.lessonsContent(forID: content.subjectID)?.unlockedQuizContent(for: $0) }
+                                let resultContent = QuizResultContent.build(
+                                    from: content,
+                                    selectedOptionIDsByQuestionID: selectedOptionIDsByQuestionID,
+                                    nextTopicQuizContent: nextTopicQuizContent
+                                )
+                                path.removeLast()
+                                path.append(.quizResult(resultContent))
+                            }
+                        )
+                    )
+                case let .quizResult(content):
+                    QuizResultView(
+                        content: content,
+                        actions: .init(
+                            onTapNextTopic: {
+                                guard let nextTopic = content.nextTopicQuizContent else { return }
+                                path.removeLast()
+                                path.append(.quiz(nextTopic))
+                            },
+                            onTapReviewAnswers: {
+                                path.append(.reviewAnswers(content.reviewContent))
+                            },
+                            onTapRetryQuiz: {
+                                path.removeLast()
+                                path.append(.quiz(content.retryQuizContent))
+                            }
+                        )
+                    )
+                case let .reviewAnswers(content):
+                    ReviewAnswersView(
+                        content: content,
+                        actions: .init(
+                            onTapNextTopic: {
+                                guard let nextTopic = content.nextTopicQuizContent else { return }
+                                if path.count >= 2 {
+                                    path.removeLast(2)
+                                }
+                                path.append(.quiz(nextTopic))
+                            }
+                        )
+                    )
                 }
             }
         }
@@ -153,6 +206,8 @@ private extension SubjectsTabView {
 private enum SubjectsTabRoute: Hashable {
     case lessons(SubjectLessonsContent)
     case quiz(LessonQuizContent)
+    case quizResult(QuizResultContent)
+    case reviewAnswers(ReviewAnswersContent)
 }
 
 private struct SubjectCard: View {

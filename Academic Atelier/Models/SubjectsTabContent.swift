@@ -54,6 +54,10 @@ struct SubjectsTabContent: Hashable {
     func lessonsContent(for subject: Subject) -> SubjectLessonsContent? {
         SubjectLessonsContent.placeholderByID[subject.id]
     }
+
+    func lessonsContent(forID id: String) -> SubjectLessonsContent? {
+        SubjectLessonsContent.placeholderByID[id]
+    }
 }
 
 extension SubjectsTabContent {

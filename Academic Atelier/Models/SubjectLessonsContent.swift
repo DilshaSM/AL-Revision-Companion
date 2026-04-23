@@ -173,6 +173,17 @@ extension SubjectLessonsContent {
         LessonQuizContent.placeholder(forSubjectID: id, subjectTitle: title, lesson: lesson)
     }
 
+    func nextLesson(after lesson: Lesson) -> Lesson? {
+        guard let currentIndex = allLessons.firstIndex(where: { $0.id == lesson.id }) else { return nil }
+        let nextIndex = allLessons.index(after: currentIndex)
+        guard allLessons.indices.contains(nextIndex) else { return nil }
+        return allLessons[nextIndex]
+    }
+
+    func unlockedQuizContent(for lesson: Lesson) -> LessonQuizContent? {
+        LessonQuizContent.placeholder(forSubjectID: id, subjectTitle: title, lesson: lesson, allowLocked: true)
+    }
+
     private var allLessons: [Lesson] {
         units.flatMap(\.lessons)
     }

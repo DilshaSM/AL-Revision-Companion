@@ -4,12 +4,14 @@ struct LessonQuizView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let content: LessonQuizContent
+    private let actions: LessonQuizActions
 
     @State private var currentQuestionIndex: Int
     @State private var selectedOptionIDsByQuestionID: [String: String]
 
-    init(content: LessonQuizContent) {
+    init(content: LessonQuizContent, actions: LessonQuizActions = .init()) {
         self.content = content
+        self.actions = actions
         _currentQuestionIndex = State(
             initialValue: min(max(content.resumeQuestionIndex, 0), max(content.questions.count - 1, 0))
         )
@@ -180,7 +182,7 @@ private extension LessonQuizView {
                 guard canAdvance else { return }
 
                 if isOnLastQuestion {
-                    dismiss()
+                    actions.onComplete(selectedOptionIDsByQuestionID)
                     return
                 }
 
@@ -215,6 +217,10 @@ private extension LessonQuizView {
     func formattedQuestionNumber(_ value: Int) -> String {
         String(format: "%02d", value)
     }
+}
+
+struct LessonQuizActions {
+    var onComplete: ([String: String]) -> Void = { _ in }
 }
 
 private struct QuizOptionRow: View {
