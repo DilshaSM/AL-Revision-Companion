@@ -7,6 +7,7 @@ struct HomeTabView: View {
         NavigationStack(path: $path) {
             HomeView(
                 actions: .init(
+                    onTapWeeklyProgress: handleWeeklyProgressTap,
                     onTapQuickTool: handleQuickToolTap
                 )
             )
@@ -54,6 +55,14 @@ struct HomeTabView: View {
                     QuickRevisionContentView(topic: topic)
                 case let .flashcardsSession(content):
                     FlashcardsSessionView(content: content)
+                case .progressInsights:
+                    ProgressTabView(
+                        actions: .init(
+                            onTapSubjectMastery: handleProgressSubjectTap
+                        )
+                    )
+                case let .progressRecommendations(content):
+                    RecommendationsView(content: content)
                 }
             }
         }
@@ -68,6 +77,15 @@ struct HomeTabView: View {
         case .recallTools:
             path.append(.recallTools)
         }
+    }
+
+    private func handleWeeklyProgressTap() {
+        path.append(.progressInsights)
+    }
+
+    private func handleProgressSubjectTap(_ subjectMastery: ProgressTabContent.SubjectMastery) {
+        guard let content = ProgressTabContent.placeholder.recommendationsContent(for: subjectMastery) else { return }
+        path.append(.progressRecommendations(content))
     }
 
     private func handleStudyMaterialTap(_ subject: QuickRevisionSubject) {
@@ -130,4 +148,6 @@ private enum HomeTabRoute: Hashable {
     case flashcardsSession(FlashcardsSessionContent)
     case topicSelection(QuickRevisionSubject)
     case topicContent(QuickRevisionSubject.Topic)
+    case progressInsights
+    case progressRecommendations(RecommendationsContent)
 }

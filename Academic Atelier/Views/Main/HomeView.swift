@@ -212,57 +212,60 @@ private extension HomeView {
     }
 
     var weeklyProgressSection: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HomeEyebrow(title: dashboard.weeklyProgress.eyebrow, color: HomePalette.muted)
+        Button(action: actions.onTapWeeklyProgress) {
+            VStack(alignment: .leading, spacing: 24) {
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HomeEyebrow(title: dashboard.weeklyProgress.eyebrow, color: HomePalette.muted)
 
-                    Text(dashboard.weeklyProgress.title)
-                        .font(AppTypography.homeFeatureTitle)
-                        .foregroundStyle(HomePalette.ink)
-                }
+                        Text(dashboard.weeklyProgress.title)
+                            .font(AppTypography.homeFeatureTitle)
+                            .foregroundStyle(HomePalette.ink)
+                    }
 
-                Spacer(minLength: 16)
+                    Spacer(minLength: 16)
 
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text(dashboard.weeklyProgress.scoreText)
-                        .font(AppTypography.homeMetric)
-                        .foregroundStyle(HomePalette.brand)
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(dashboard.weeklyProgress.scoreText)
+                            .font(AppTypography.homeMetric)
+                            .foregroundStyle(HomePalette.brand)
 
-                    Text(dashboard.weeklyProgress.statusText)
-                        .font(AppTypography.homeMeta)
-                        .foregroundStyle(HomePalette.muted)
-                }
-            }
-
-            VStack(spacing: 12) {
-                HStack(alignment: .bottom, spacing: 10) {
-                    ForEach(dashboard.weeklyProgress.days) { day in
-                        RoundedRectangle(cornerRadius: 2, style: .continuous)
-                            .fill(day.isHighlighted ? HomePalette.brand : HomePalette.track)
-                            .frame(maxWidth: .infinity, minHeight: CGFloat(max(2.0, 54.0 * day.value)))
-                            .shadow(
-                                color: day.isHighlighted ? HomePalette.brand.opacity(0.2) : .clear,
-                                radius: 12,
-                                x: 0,
-                                y: -4
-                            )
+                        Text(dashboard.weeklyProgress.statusText)
+                            .font(AppTypography.homeMeta)
+                            .foregroundStyle(HomePalette.muted)
                     }
                 }
-                .frame(height: 54, alignment: .bottom)
 
-                HStack {
-                    ForEach(dashboard.weeklyProgress.days) { day in
-                        Text(day.label)
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(day.isHighlighted ? HomePalette.brand : HomePalette.muted)
-                            .frame(maxWidth: .infinity)
+                VStack(spacing: 12) {
+                    HStack(alignment: .bottom, spacing: 10) {
+                        ForEach(dashboard.weeklyProgress.days) { day in
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(day.isHighlighted ? HomePalette.brand : HomePalette.track)
+                                .frame(maxWidth: .infinity, minHeight: CGFloat(max(2.0, 54.0 * day.value)))
+                                .shadow(
+                                    color: day.isHighlighted ? HomePalette.brand.opacity(0.2) : .clear,
+                                    radius: 12,
+                                    x: 0,
+                                    y: -4
+                                )
+                        }
+                    }
+                    .frame(height: 54, alignment: .bottom)
+
+                    HStack {
+                        ForEach(dashboard.weeklyProgress.days) { day in
+                            Text(day.label)
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(day.isHighlighted ? HomePalette.brand : HomePalette.muted)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 }
             }
+            .padding(25)
+            .homeCardStyle(cornerRadius: 20)
         }
-        .padding(25)
-        .homeCardStyle(cornerRadius: 20)
+        .buttonStyle(.plain)
     }
 
     var weaknessSection: some View {
@@ -337,6 +340,7 @@ struct HomeViewActions {
     var onTapSettings: () -> Void = {}
     var onTapContinueLearning: () -> Void = {}
     var onTapTodaysFocus: () -> Void = {}
+    var onTapWeeklyProgress: () -> Void = {}
     var onTapWeakness: () -> Void = {}
     var onTapQuickTool: (HomeDashboardContent.QuickToolContent) -> Void = { _ in }
 }

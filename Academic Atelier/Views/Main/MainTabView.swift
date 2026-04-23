@@ -13,7 +13,7 @@ struct MainTabView: View {
                     Label("Subjects", systemImage: "book.fill")
                 }
 
-            ProgressPlaceholderView()
+            RecommendationsView(content: .placeholder)
                 .tabItem {
                     Label("Progress", systemImage: "chart.bar.fill")
                 }
