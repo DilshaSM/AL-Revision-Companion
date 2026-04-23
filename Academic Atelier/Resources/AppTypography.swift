@@ -189,6 +189,18 @@ enum AppTypography {
     static let progressRecommendationsHistoryTitle = Font.system(size: 12, weight: .bold)
     static let progressRecommendationsHistoryMeta = Font.system(size: 8, weight: .black)
 
+    static let profileTitle = Font.system(size: 24, weight: .black)
+    static let profileName = Font.system(size: 30, weight: .black)
+    static let profileSubtitle = Font.system(size: 15, weight: .medium)
+    static let profileSectionLabel = Font.system(size: 12, weight: .heavy)
+    static let profileIdentityTitle = Font.system(size: 18, weight: .bold)
+    static let profileIdentityValue = Font.system(size: 16, weight: .regular)
+    static let profileSignOut = Font.system(size: 18, weight: .bold)
+    static let profileSettingsTitle = Font.system(size: 24, weight: .black)
+    static let profileSettingsSectionLabel = Font.system(size: 12, weight: .heavy)
+    static let profileSettingsRowTitle = Font.system(size: 18, weight: .bold)
+    static let profileSettingsRowSubtitle = Font.system(size: 14, weight: .regular)
+
     static let flashcardsSessionTopBarTitle = Font.system(size: 12, weight: .bold)
     static let flashcardsSessionProgressLabel = Font.system(size: 11, weight: .bold)
     static let flashcardsSessionProgressValue = Font.system(size: 16, weight: .regular)

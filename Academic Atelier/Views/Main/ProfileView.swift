@@ -3,34 +3,204 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var session: SessionViewModel
     @StateObject private var viewModel = ProfileViewModel()
+    @State private var path: [ProfileRoute] = []
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Student") {
-                    Text(session.currentUser?.fullName ?? "Student")
-                    Text(session.currentUser?.email ?? "No Email")
-                    Text(session.currentUser?.selectedStream?.rawValue ?? "No Stream")
+        NavigationStack(path: $path) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    topBar
+                    profileHeader
+                    academicIdentitySection
+                    signOutButton
                 }
-
-                Section("Preferences") {
-                    Toggle("Face ID Login", isOn: $viewModel.settings.isFaceIDEnabled)
-                    Toggle("Notifications", isOn: $viewModel.settings.areNotificationsEnabled)
-                }
-
-                Section {
-                    Button("Sign Out", role: .destructive) {
-                        session.signOut()
-                    }
+                .padding(.horizontal, 24)
+                .padding(.top, 48)
+                .padding(.bottom, 128)
+            }
+            .background(ProfilePalette.canvas.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: ProfileRoute.self) { route in
+                switch route {
+                case .settings:
+                    ProfileSettingsView(settings: $viewModel.settings)
                 }
             }
-            .navigationTitle("Profile")
         }
         .onAppear {
             viewModel.settings = session.profileSettings
         }
+        .onChange(of: session.profileSettings) { _, newSettings in
+            guard newSettings != viewModel.settings else { return }
+            viewModel.settings = newSettings
+        }
         .onChange(of: viewModel.settings) { _, newSettings in
             session.updateProfileSettings(newSettings)
+        }
+    }
+}
+
+private extension ProfileView {
+    var content: ProfileContent {
+        .build(user: session.currentUser)
+    }
+
+    var topBar: some View {
+        HStack(alignment: .center) {
+            Text(content.title)
+                .font(AppTypography.profileTitle)
+                .foregroundStyle(ProfilePalette.textPrimary)
+
+            Spacer(minLength: 12)
+
+            Button {
+                path.append(.settings)
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(ProfilePalette.buttonChrome)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(height: 40)
+    }
+
+    var profileHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ProfileAvatarView(fullName: content.fullName)
+                .padding(.top, 18)
+
+            Text(content.fullName)
+                .font(AppTypography.profileName)
+                .foregroundStyle(ProfilePalette.textPrimary)
+                .padding(.top, 10)
+
+            Text(content.streamTitle)
+                .font(AppTypography.profileSubtitle)
+                .foregroundStyle(ProfilePalette.textSecondary)
+        }
+    }
+
+    var academicIdentitySection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(content.academicSectionTitle.uppercased())
+                .font(AppTypography.profileSectionLabel)
+                .tracking(1.8)
+                .foregroundStyle(ProfilePalette.sectionLabel)
+
+            VStack(spacing: 30) {
+                ForEach(content.identityItems) { item in
+                    ProfileIdentityRow(item: item)
+                }
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(ProfilePalette.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(ProfilePalette.cardStroke, lineWidth: 1)
+            )
+            .shadow(color: ProfilePalette.cardShadow, radius: 12, y: 6)
+        }
+    }
+
+    var signOutButton: some View {
+        Button(role: .destructive) {
+            session.signOut()
+        } label: {
+            Text(content.signOutTitle)
+                .font(AppTypography.profileSignOut)
+                .foregroundStyle(ProfilePalette.signOut)
+                .frame(maxWidth: .infinity, minHeight: 102)
+                .background(ProfilePalette.card)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(ProfilePalette.cardStroke, lineWidth: 1)
+                )
+                .shadow(color: ProfilePalette.cardShadow, radius: 12, y: 6)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 20)
+    }
+}
+
+private enum ProfileRoute: Hashable {
+    case settings
+}
+
+private struct ProfileAvatarView: View {
+    let fullName: String
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(ProfilePalette.avatarOuter)
+                .frame(width: 120, height: 120)
+
+            Circle()
+                .stroke(ProfilePalette.avatarRing, lineWidth: 10)
+                .frame(width: 108, height: 108)
+
+            Circle()
+                .fill(ProfilePalette.avatarInner)
+                .frame(width: 92, height: 92)
+
+            Text(initials)
+                .font(.system(size: 28, weight: .black))
+                .foregroundStyle(ProfilePalette.avatarText)
+        }
+    }
+
+    private var initials: String {
+        let components = fullName
+            .split(separator: " ")
+            .prefix(2)
+            .compactMap { $0.first }
+
+        return components.isEmpty ? "CG" : String(components)
+    }
+}
+
+private struct ProfileIdentityRow: View {
+    let item: ProfileContent.IdentityItem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(ProfilePalette.blueTile)
+                    .frame(width: 52, height: 52)
+
+                Image(systemName: iconName)
+                    .font(.system(size: 23, weight: .semibold))
+                    .foregroundStyle(ProfilePalette.blueIcon)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .font(AppTypography.profileIdentityTitle)
+                    .foregroundStyle(ProfilePalette.textPrimary)
+
+                Text(item.detail)
+                    .font(AppTypography.profileIdentityValue)
+                    .foregroundStyle(ProfilePalette.textSecondary)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var iconName: String {
+        switch item.id {
+        case .subjectStream:
+            return "graduationcap.fill"
+        case .registrationNumber:
+            return "person.text.rectangle.fill"
         }
     }
 }
