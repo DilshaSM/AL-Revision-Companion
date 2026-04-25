@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var session: SessionViewModel
+    @StateObject private var dashboardViewModel = HomeDashboardViewModel()
 
     private let providedContent: HomeDashboardContent?
     private let actions: HomeViewActions
@@ -12,7 +13,7 @@ struct HomeView: View {
     }
 
     private var dashboard: HomeDashboardContent {
-        providedContent ?? .placeholder(for: session.currentUser)
+        providedContent ?? dashboardViewModel.content ?? .placeholder(for: session.currentUser)
     }
 
     var body: some View {
@@ -22,6 +23,7 @@ struct HomeView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
                     greetingSection
+                    dashboardStatusSection
                     continueLearningSection
                     todaysFocusSection
                     quickToolsSection
@@ -33,8 +35,24 @@ struct HomeView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 32)
             }
+            .refreshable {
+                await loadDashboard(forceRefresh: true)
+            }
         }
         .background(HomePalette.canvas.ignoresSafeArea())
+        .task {
+            await loadDashboard()
+        }
+    }
+
+    private func loadDashboard(forceRefresh: Bool = false) async {
+        guard providedContent == nil else { return }
+
+        await dashboardViewModel.load(for: session.currentUser, forceRefresh: forceRefresh)
+
+        if dashboardViewModel.requiresSignOut {
+            session.signOut()
+        }
     }
 }
 
@@ -87,6 +105,24 @@ private extension HomeView {
                 .font(AppTypography.homeGreetingHeadline)
                 .tracking(-0.75)
                 .foregroundStyle(HomePalette.ink)
+        }
+    }
+
+    @ViewBuilder
+    var dashboardStatusSection: some View {
+        if dashboardViewModel.isLoading && dashboardViewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading dashboard...")
+                    .font(.footnote)
+                    .foregroundStyle(HomePalette.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if !dashboardViewModel.errorMessage.isEmpty {
+            Text(dashboardViewModel.errorMessage)
+                .font(.footnote)
+                .foregroundStyle(HomePalette.dangerText)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -323,15 +359,42 @@ private extension HomeView {
                 .foregroundStyle(HomePalette.ink)
 
             VStack(spacing: 16) {
-                HStack(spacing: 16) {
-                    ForEach(dashboard.recentSubjects.compactCards) { subject in
-                        SubjectCard(subject: subject)
+                if dashboard.recentSubjects.isEmpty {
+                    emptyRecentSubjectsCard
+                } else {
+                    if !dashboard.recentSubjects.compactCards.isEmpty {
+                        HStack(spacing: 16) {
+                            ForEach(dashboard.recentSubjects.compactCards) { subject in
+                                SubjectCard(subject: subject)
+                            }
+                        }
+                    }
+
+                    if let featuredCard = dashboard.recentSubjects.featuredCard {
+                        BiologySubjectCard(subject: featuredCard)
                     }
                 }
-
-                BiologySubjectCard(subject: dashboard.recentSubjects.featuredCard)
             }
         }
+    }
+
+    var emptyRecentSubjectsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: "book.closed.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(HomePalette.brand)
+
+            Text("No recent subjects yet")
+                .font(AppTypography.homeBody)
+                .foregroundStyle(HomePalette.ink)
+
+            Text("Open a lesson to populate this section.")
+                .font(AppTypography.homeMetaRegular)
+                .foregroundStyle(HomePalette.muted)
+        }
+        .padding(21)
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
+        .homeCardStyle(cornerRadius: 20)
     }
 }
 

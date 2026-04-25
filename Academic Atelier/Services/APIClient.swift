@@ -47,6 +47,31 @@ struct APIClient {
         self.configuration = configuration
         self.session = session
         self.tokenStore = tokenStore
+        decoder.dateDecodingStrategy = .custom(Self.decodeISO8601Date)
+    }
+
+    private static func decodeISO8601Date(from decoder: Decoder) throws -> Date {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self)
+
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        let standardFormatter = ISO8601DateFormatter()
+        standardFormatter.formatOptions = [.withInternetDateTime]
+
+        if let date = standardFormatter.date(from: value) {
+            return date
+        }
+
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "Expected ISO-8601 date string, got \(value)."
+        )
     }
 
     func send<Response: Decodable>(
