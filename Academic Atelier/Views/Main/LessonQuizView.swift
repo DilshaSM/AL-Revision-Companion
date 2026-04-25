@@ -2,49 +2,63 @@ import SwiftUI
 
 struct LessonQuizView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
+
+    @StateObject private var viewModel = LessonQuizViewModel()
 
     private let content: LessonQuizContent
     private let actions: LessonQuizActions
 
-    @State private var currentQuestionIndex: Int
-    @State private var selectedOptionIDsByQuestionID: [String: String]
+    @State private var currentQuestionIndex = 0
+    @State private var selectedOptionIDsByQuestionID: [Int: Int] = [:]
 
     init(content: LessonQuizContent, actions: LessonQuizActions = .init()) {
         self.content = content
         self.actions = actions
-        _currentQuestionIndex = State(
-            initialValue: min(max(content.resumeQuestionIndex, 0), max(content.questions.count - 1, 0))
-        )
-        _selectedOptionIDsByQuestionID = State(
-            initialValue: Dictionary(
-                uniqueKeysWithValues: content.questions.compactMap { question in
-                    guard let selectedOptionID = question.selectedOptionID else { return nil }
-                    return (question.id, selectedOptionID)
-                }
-            )
-        )
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 48) {
-                questionHeader
-                questionPrompt
-                optionsSection
+        Group {
+            if content.questions.isEmpty {
+                VStack(spacing: 16) {
+                    Text("This quiz has no questions.")
+                        .font(.headline)
+                        .foregroundStyle(SubjectsPalette.ink)
+
+                    Button("Close") {
+                        dismiss()
+                    }
+                    .foregroundStyle(SubjectsPalette.brand)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(SubjectsPalette.canvas.ignoresSafeArea())
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 32) {
+                        statusBanner
+                        questionHeader
+                        questionPrompt
+                        optionsSection
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
+                }
+                .background(SubjectsPalette.canvas.ignoresSafeArea())
+                .safeAreaInset(edge: .top) {
+                    topBar
+                }
+                .safeAreaInset(edge: .bottom) {
+                    bottomBar
+                }
+                .toolbar(.hidden, for: .navigationBar)
+                .toolbar(.hidden, for: .tabBar)
+                .task(id: content.quizID) {
+                    await startAttempt()
+                }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 24)
-            .padding(.bottom, 40)
         }
-        .background(SubjectsPalette.canvas.ignoresSafeArea())
-        .safeAreaInset(edge: .top) {
-            topBar
-        }
-        .safeAreaInset(edge: .bottom) {
-            bottomBar
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
     }
 }
 
@@ -65,17 +79,25 @@ private extension LessonQuizView {
         currentQuestionIndex == content.questions.count - 1
     }
 
-    var canAdvance: Bool {
-        selectedOptionIDsByQuestionID[currentQuestion.id] != nil
-    }
-
     var progressFraction: CGFloat {
         guard !content.questions.isEmpty else { return 0 }
         return CGFloat(currentQuestionNumber) / CGFloat(content.questions.count)
     }
 
-    var nextButtonTitle: String {
-        isOnLastQuestion ? "Finish" : "Next Question"
+    var primaryButtonTitle: String {
+        if isOnLastQuestion {
+            return viewModel.isSubmitting ? "Submitting..." : "Submit Quiz"
+        }
+
+        return "Next Question"
+    }
+
+    var canPerformPrimaryAction: Bool {
+        if isOnLastQuestion {
+            return viewModel.attemptID != nil && !viewModel.isSubmitting
+        }
+
+        return !viewModel.isSubmitting
     }
 
     var topBar: some View {
@@ -102,7 +124,7 @@ private extension LessonQuizView {
             Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 6) {
-                Text(content.subjectTitle.uppercased())
+                Text(content.topicTitle.uppercased())
                     .font(AppTypography.subjectQuizTopBarMeta)
                     .tracking(1.6)
                     .foregroundStyle(SubjectsPalette.quizTopBarMeta)
@@ -123,19 +145,63 @@ private extension LessonQuizView {
         }
     }
 
+    @ViewBuilder
+    var statusBanner: some View {
+        if viewModel.isStartingAttempt && viewModel.attemptID == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Preparing your quiz attempt...")
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.muted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        } else if !viewModel.errorMessage.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                if viewModel.attemptID == nil {
+                    Button("Retry Start") {
+                        Task {
+                            await startAttempt(forceRestart: true)
+                        }
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(SubjectsPalette.brand)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
     var questionHeader: some View {
-        (
-            Text("Question ")
-                .foregroundStyle(SubjectsPalette.quizHeadlinePrimary)
-            + Text(formattedQuestionNumber(currentQuestionNumber))
-                .foregroundStyle(SubjectsPalette.quizHeadlineAccent)
-            + Text(" of ")
-                .foregroundStyle(SubjectsPalette.quizHeadlineMuted)
-            + Text(formattedQuestionNumber(content.questions.count))
-                .foregroundStyle(SubjectsPalette.quizHeadlineCount)
-        )
-        .font(AppTypography.subjectQuizQuestionHeadline)
-        .tracking(-0.9)
+        VStack(alignment: .leading, spacing: 10) {
+            (
+                Text("Question ")
+                    .foregroundStyle(SubjectsPalette.quizHeadlinePrimary)
+                + Text(formattedQuestionNumber(currentQuestionNumber))
+                    .foregroundStyle(SubjectsPalette.quizHeadlineAccent)
+                + Text(" of ")
+                    .foregroundStyle(SubjectsPalette.quizHeadlineMuted)
+                + Text(formattedQuestionNumber(content.questions.count))
+                    .foregroundStyle(SubjectsPalette.quizHeadlineCount)
+            )
+            .font(AppTypography.subjectQuizQuestionHeadline)
+            .tracking(-0.9)
+
+            if let subtitle = content.topicSubtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.muted)
+            }
+        }
     }
 
     var questionPrompt: some View {
@@ -172,34 +238,25 @@ private extension LessonQuizView {
                     .font(AppTypography.subjectQuizPreviousButton)
                     .tracking(1.2)
                     .textCase(.uppercase)
-                    .foregroundStyle(isOnFirstQuestion ? SubjectsPalette.quizPreviousDisabled : SubjectsPalette.quizPreviousLabel)
+                    .foregroundStyle(isOnFirstQuestion || viewModel.isSubmitting ? SubjectsPalette.quizPreviousDisabled : SubjectsPalette.quizPreviousLabel)
                     .frame(width: 118, height: 60)
             }
             .buttonStyle(.plain)
-            .disabled(isOnFirstQuestion)
+            .disabled(isOnFirstQuestion || viewModel.isSubmitting)
 
             Button {
-                guard canAdvance else { return }
-
-                if isOnLastQuestion {
-                    actions.onComplete(selectedOptionIDsByQuestionID)
-                    return
-                }
-
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    currentQuestionIndex += 1
-                }
+                handlePrimaryAction()
             } label: {
-                Text(nextButtonTitle)
+                Text(primaryButtonTitle)
                     .font(AppTypography.subjectQuizNextButton)
                     .foregroundStyle(.white)
                     .frame(width: 200, height: 60)
-                    .background(canAdvance ? SubjectsPalette.brandBright : SubjectsPalette.quizNextDisabled)
+                    .background(canPerformPrimaryAction ? SubjectsPalette.brandBright : SubjectsPalette.quizNextDisabled)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: canAdvance ? SubjectsPalette.quizPrimaryShadow : .clear, radius: 24, x: 0, y: 12)
+                    .shadow(color: canPerformPrimaryAction ? SubjectsPalette.quizPrimaryShadow : .clear, radius: 24, x: 0, y: 12)
             }
             .buttonStyle(.plain)
-            .disabled(!canAdvance)
+            .disabled(!canPerformPrimaryAction)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
@@ -214,13 +271,56 @@ private extension LessonQuizView {
         }
     }
 
+    func startAttempt(forceRestart: Bool = false) async {
+        if forceRestart {
+            // Reset local state for a fresh start request.
+            selectedOptionIDsByQuestionID = [:]
+        }
+
+        await viewModel.startAttemptIfNeeded(for: content)
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+        }
+    }
+
+    func handlePrimaryAction() {
+        if isOnLastQuestion {
+            Task {
+                let answers = Dictionary(
+                    uniqueKeysWithValues: content.questions.map { question in
+                        (question.id, selectedOptionIDsByQuestionID[question.id])
+                    }
+                )
+
+                guard let result = await viewModel.submit(
+                    content: content,
+                    selectedOptionIDsByQuestionID: answers
+                ) else {
+                    if viewModel.requiresSignOut {
+                        session.signOut()
+                    }
+                    return
+                }
+
+                refreshCenter.didSubmitQuiz()
+                actions.onComplete(result)
+            }
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentQuestionIndex += 1
+        }
+    }
+
     func formattedQuestionNumber(_ value: Int) -> String {
         String(format: "%02d", value)
     }
 }
 
 struct LessonQuizActions {
-    var onComplete: ([String: String]) -> Void = { _ in }
+    var onComplete: (QuizResultContent) -> Void = { _ in }
 }
 
 private struct QuizOptionRow: View {
@@ -259,7 +359,7 @@ private struct QuizOptionRow: View {
                 color: isSelected ? SubjectsPalette.quizOptionSelectedShadow : SubjectsPalette.quizOptionShadow,
                 radius: isSelected ? 16 : 10,
                 x: 0,
-                y: isSelected ? 8 : 4
+                y: isSelected ? 8 : 6
             )
         }
         .buttonStyle(.plain)

@@ -1,12 +1,21 @@
 import SwiftUI
 
 struct SubjectsTabView: View {
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
+
+    @StateObject private var viewModel = SubjectsViewModel()
     @State private var path: [SubjectsTabRoute] = []
+    @State private var routeErrorMessage = ""
 
-    private let content: SubjectsTabContent
+    private let subjectsService = SubjectsService()
 
-    init(content: SubjectsTabContent = .placeholder) {
-        self.content = content
+    private var content: SubjectsTabContent? {
+        viewModel.content
+    }
+
+    private var titleText: String {
+        content?.title ?? "Your Subjects"
     }
 
     var body: some View {
@@ -15,32 +24,28 @@ struct SubjectsTabView: View {
                 topBar
 
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 40) {
-                        assessmentCard
+                    VStack(alignment: .leading, spacing: 28) {
+                        overviewCard
+                        statusSection
                         subjectsSection
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 20)
                     .padding(.bottom, 28)
                 }
+                .refreshable {
+                    await loadSubjects(forceRefresh: true)
+                }
             }
             .background(SubjectsPalette.canvas.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: SubjectsTabRoute.self) { route in
                 switch route {
-                case let .lessons(content):
+                case let .lessons(subject):
                     SubjectLessonsView(
-                        content: content,
+                        subject: subject,
                         actions: .init(
-                            onTapCurrentLesson: {
-                                guard
-                                    let lesson = content.currentLesson,
-                                    let quizContent = content.quizContent(for: lesson)
-                                else { return }
-                                path.append(.quiz(quizContent))
-                            },
-                            onTapLesson: { lesson in
-                                guard let quizContent = content.quizContent(for: lesson) else { return }
+                            onOpenQuiz: { quizContent in
                                 path.append(.quiz(quizContent))
                             }
                         )
@@ -49,22 +54,10 @@ struct SubjectsTabView: View {
                     LessonQuizView(
                         content: content,
                         actions: .init(
-                            onComplete: { selectedOptionIDsByQuestionID in
-                                let currentLesson = SubjectLessonsContent.Lesson(
-                                    id: content.lessonID,
-                                    title: content.lessonTitle,
-                                    state: .completed(detailText: "Completed")
-                                )
-                                let nextTopicQuizContent = self.content
-                                    .lessonsContent(forID: content.subjectID)?
-                                    .nextLesson(after: currentLesson)
-                                    .flatMap { self.content.lessonsContent(forID: content.subjectID)?.unlockedQuizContent(for: $0) }
-                                let resultContent = QuizResultContent.build(
-                                    from: content,
-                                    selectedOptionIDsByQuestionID: selectedOptionIDsByQuestionID,
-                                    nextTopicQuizContent: nextTopicQuizContent
-                                )
-                                path.removeLast()
+                            onComplete: { resultContent in
+                                if !path.isEmpty {
+                                    path.removeLast()
+                                }
                                 path.append(.quizResult(resultContent))
                             }
                         )
@@ -74,33 +67,47 @@ struct SubjectsTabView: View {
                         content: content,
                         actions: .init(
                             onTapNextTopic: {
-                                guard let nextTopic = content.nextTopicQuizContent else { return }
-                                path.removeLast()
-                                path.append(.quiz(nextTopic))
+                                openNextLesson(from: content, removingRoutes: 1)
                             },
                             onTapReviewAnswers: {
-                                path.append(.reviewAnswers(content.reviewContent))
+                                path.append(.reviewAnswers(content))
                             },
                             onTapRetryQuiz: {
-                                path.removeLast()
+                                if !path.isEmpty {
+                                    path.removeLast()
+                                }
                                 path.append(.quiz(content.retryQuizContent))
                             }
                         )
                     )
-                case let .reviewAnswers(content):
+                case let .reviewAnswers(result):
                     ReviewAnswersView(
-                        content: content,
+                        result: result,
                         actions: .init(
                             onTapNextTopic: {
-                                guard let nextTopic = content.nextTopicQuizContent else { return }
-                                if path.count >= 2 {
-                                    path.removeLast(2)
-                                }
-                                path.append(.quiz(nextTopic))
+                                openNextLesson(from: result, removingRoutes: 2)
                             }
                         )
                     )
                 }
+            }
+            .task(id: refreshCenter.subjectsToken) {
+                await loadSubjects(forceRefresh: viewModel.content != nil)
+            }
+            .alert(
+                "Unable to Continue",
+                isPresented: Binding(
+                    get: { !routeErrorMessage.isEmpty },
+                    set: { isPresented in
+                        if !isPresented {
+                            routeErrorMessage = ""
+                        }
+                    }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(routeErrorMessage)
             }
         }
     }
@@ -112,7 +119,7 @@ private extension SubjectsTabView {
             Spacer()
 
             HStack {
-                Text(content.title)
+                Text(titleText)
                     .font(AppTypography.subjectsTopBarTitle)
                     .tracking(-0.5)
                     .foregroundStyle(SubjectsPalette.titleBlue)
@@ -125,45 +132,20 @@ private extension SubjectsTabView {
         .frame(height: 96)
     }
 
-    var assessmentCard: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 2.5) {
-                Text(content.assessment.eyebrow.uppercased())
-                    .font(AppTypography.subjectsAssessmentEyebrow)
-                    .tracking(1.0)
-                    .foregroundStyle(SubjectsPalette.brand.opacity(0.7))
+    var overviewCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text((content?.streamName ?? "Selected Stream").uppercased())
+                .font(AppTypography.subjectsAssessmentEyebrow)
+                .tracking(1.0)
+                .foregroundStyle(SubjectsPalette.brand.opacity(0.7))
 
-                Text(content.assessment.title)
-                    .font(AppTypography.subjectsAssessmentTitle)
-                    .foregroundStyle(SubjectsPalette.ink)
-                    .padding(.top, 8)
+            Text(content?.subtitle ?? "Load the subjects available for your current stream.")
+                .font(AppTypography.subjectsAssessmentTitle)
+                .foregroundStyle(SubjectsPalette.ink)
 
-                Text(content.assessment.subtitle)
-                    .font(AppTypography.subjectsAssessmentSubtitle)
-                    .foregroundStyle(SubjectsPalette.muted)
-                    .padding(.top, 2)
-            }
-
-            Spacer(minLength: 12)
-
-            ZStack(alignment: .topTrailing) {
-                Circle()
-                    .fill(.white)
-                    .frame(width: 40, height: 40)
-
-                Image(systemName: content.assessment.symbolName)
-                    .font(.system(size: 21, weight: .semibold))
-                    .foregroundStyle(SubjectsPalette.brand)
-
-                Text(content.assessment.badgeCountText)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 20, height: 20)
-                    .background(SubjectsPalette.brand)
-                    .clipShape(Circle())
-                    .offset(x: 6, y: -6)
-            }
-            .frame(width: 56, height: 56)
+            Text("\(content?.subjects.count ?? 0) subjects available")
+                .font(AppTypography.subjectsAssessmentSubtitle)
+                .foregroundStyle(SubjectsPalette.muted)
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
@@ -171,43 +153,116 @@ private extension SubjectsTabView {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    var subjectsSection: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack {
-                Text(content.subjectsSectionTitle.uppercased())
-                    .font(AppTypography.subjectsSectionTitle)
-                    .tracking(1.4)
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading subjects...")
+                    .font(.footnote)
                     .foregroundStyle(SubjectsPalette.muted)
-
-                Spacer(minLength: 12)
-
-                Text(content.subjectsActionTitle)
-                    .font(AppTypography.subjectsSectionAction)
-                    .foregroundStyle(SubjectsPalette.brand)
             }
-            .padding(.horizontal, 4)
+        } else if !viewModel.errorMessage.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
 
-            VStack(spacing: 30) {
-                ForEach(content.subjects) { subject in
-                    SubjectCard(subject: subject) {
-                        handleSubjectTap(subject)
+                Button("Retry") {
+                    Task {
+                        await loadSubjects(forceRefresh: true)
                     }
                 }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(SubjectsPalette.brand)
             }
         }
     }
 
-    func handleSubjectTap(_ subject: SubjectsTabContent.Subject) {
-        guard let content = content.lessonsContent(for: subject) else { return }
-        path.append(.lessons(content))
+    var subjectsSection: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Text((content?.subjectsSectionTitle ?? "Active Curriculum").uppercased())
+                .font(AppTypography.subjectsSectionTitle)
+                .tracking(1.4)
+                .foregroundStyle(SubjectsPalette.muted)
+                .padding(.horizontal, 4)
+
+            if let subjects = content?.subjects, !subjects.isEmpty {
+                VStack(spacing: 20) {
+                    ForEach(subjects) { subject in
+                        SubjectCard(subject: subject) {
+                            path.append(.lessons(subject))
+                        }
+                    }
+                }
+            } else if !viewModel.isLoading {
+                Text("No subjects are available for the selected stream.")
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.muted)
+                    .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    func loadSubjects(forceRefresh: Bool = false) async {
+        await viewModel.load(for: session.currentUser, forceRefresh: forceRefresh)
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+        }
+    }
+
+    func openNextLesson(from result: QuizResultContent, removingRoutes routeCount: Int) {
+        guard let nextLesson = result.nextLesson else { return }
+
+        Task {
+            do {
+                let subjectTree = try await subjectsService.getSubjectUnits(subjectID: result.retryQuizContent.subjectID)
+                let subjectContent = SubjectLessonsContent.build(from: subjectTree)
+
+                guard let refreshedLesson = subjectContent.units
+                    .flatMap(\.lessons)
+                    .first(where: { $0.id == nextLesson.id }) else {
+                    routeErrorMessage = "The next lesson could not be found."
+                    return
+                }
+
+                guard let activeTopic = refreshedLesson.firstActiveTopic else {
+                    routeErrorMessage = "No active topic is available for the next lesson yet."
+                    return
+                }
+
+                _ = try await subjectsService.openLesson(lessonID: refreshedLesson.id)
+                let quizPayload = try await subjectsService.getTopicQuiz(topicID: activeTopic.id)
+                let nextQuizContent = LessonQuizContent.build(
+                    from: quizPayload,
+                    lesson: refreshedLesson,
+                    nextLesson: subjectContent.nextLesson(after: refreshedLesson.id)
+                )
+
+                let safeRemoveCount = min(routeCount, path.count)
+                if safeRemoveCount > 0 {
+                    path.removeLast(safeRemoveCount)
+                }
+                path.append(.quiz(nextQuizContent))
+            } catch let error as APIError {
+                if error.requiresSignOut {
+                    session.signOut()
+                } else {
+                    routeErrorMessage = error.localizedDescription
+                }
+            } catch {
+                routeErrorMessage = error.localizedDescription
+            }
+        }
     }
 }
 
 private enum SubjectsTabRoute: Hashable {
-    case lessons(SubjectLessonsContent)
+    case lessons(SubjectsTabContent.Subject)
     case quiz(LessonQuizContent)
     case quizResult(QuizResultContent)
-    case reviewAnswers(ReviewAnswersContent)
+    case reviewAnswers(QuizResultContent)
 }
 
 private struct SubjectCard: View {
@@ -216,69 +271,55 @@ private struct SubjectCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(subject.title)
-                            .font(AppTypography.subjectsCardTitle)
-                            .tracking(-0.5)
-                            .foregroundStyle(SubjectsPalette.ink)
-
-                        Text(subject.lastActiveText)
-                            .font(AppTypography.subjectsCardMeta)
-                            .foregroundStyle(SubjectsPalette.secondaryMuted)
-                    }
-
-                    Spacer(minLength: 12)
-
-                    Text(subject.levelText.uppercased())
-                        .font(AppTypography.subjectsCardBadge)
-                        .foregroundStyle(SubjectsPalette.badgeForeground)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 2)
-                        .background(SubjectsPalette.badgeBackground)
-                        .clipShape(Capsule())
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .bottom) {
-                        VStack(alignment: .leading, spacing: 0.5) {
-                            Text(subject.nextLessonLabel.uppercased())
-                                .font(AppTypography.subjectsCardEyebrow)
-                                .foregroundStyle(SubjectsPalette.brand.opacity(0.7))
-
-                            Text(subject.nextLessonTitle)
-                                .font(AppTypography.subjectsCardLessonTitle)
-                                .foregroundStyle(SubjectsPalette.ink)
-                                .multilineTextAlignment(.leading)
-                        }
-
-                        Spacer(minLength: 12)
-
-                        Text(subject.progressText)
-                            .font(AppTypography.subjectsCardProgressValue)
+            HStack(spacing: 16) {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(SubjectsPalette.badgeBackground)
+                    .frame(width: 64, height: 64)
+                    .overlay {
+                        Image(systemName: subject.iconSystemName)
+                            .font(.system(size: 24, weight: .semibold))
                             .foregroundStyle(SubjectsPalette.brand)
                     }
 
-                    GeometryReader { proxy in
-                        Capsule(style: .continuous)
-                            .fill(SubjectsPalette.progressTrack)
-                            .overlay(alignment: .leading) {
-                                Capsule(style: .continuous)
-                                    .fill(SubjectsPalette.brand)
-                                    .frame(width: proxy.size.width * min(max(subject.progress, 0), 1))
-                            }
-                    }
-                    .frame(height: 12)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(subject.title)
+                        .font(AppTypography.subjectsCardTitle)
+                        .tracking(-0.5)
+                        .foregroundStyle(SubjectsPalette.ink)
+
+                    Text(subject.subtitle)
+                        .font(AppTypography.subjectsCardMeta)
+                        .foregroundStyle(SubjectsPalette.secondaryMuted)
+
+                    Text("Open subject")
+                        .font(AppTypography.subjectsCardEyebrow)
+                        .foregroundStyle(SubjectsPalette.brand.opacity(0.7))
+                        .padding(.top, 2)
                 }
+
+                Spacer(minLength: 12)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(SubjectsPalette.lockedForeground)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity, minHeight: 152.5, alignment: .topLeading)
+            .padding(20)
+            .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
             .background(AppColors.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: SubjectsPalette.cardShadow, radius: 2, x: 0, y: 1)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: Color.black.opacity(0.03), radius: 12, x: 0, y: 6)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private extension APIError {
+    var requiresSignOut: Bool {
+        switch self {
+        case .missingToken, .unauthorized:
+            return true
+        default:
+            return false
+        }
     }
 }

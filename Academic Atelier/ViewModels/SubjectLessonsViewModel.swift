@@ -1,0 +1,92 @@
+import Foundation
+
+@MainActor
+final class SubjectLessonsViewModel: ObservableObject {
+    @Published private(set) var content: SubjectLessonsContent?
+    @Published private(set) var isLoading = false
+    @Published private(set) var errorMessage = ""
+    @Published private(set) var pendingLessonID: Int?
+    @Published private(set) var requiresSignOut = false
+
+    private let subject: SubjectsTabContent.Subject
+    private let service: SubjectsService
+
+    init(
+        subject: SubjectsTabContent.Subject,
+        service: SubjectsService = SubjectsService()
+    ) {
+        self.subject = subject
+        self.service = service
+    }
+
+    func load(forceRefresh: Bool = false) async {
+        guard forceRefresh || content == nil else { return }
+
+        isLoading = true
+        errorMessage = ""
+        requiresSignOut = false
+
+        defer { isLoading = false }
+
+        do {
+            let tree = try await service.getSubjectUnits(subjectID: subject.id)
+            content = SubjectLessonsContent.build(from: tree)
+        } catch let error as APIError {
+            if error.requiresSignOut {
+                requiresSignOut = true
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startLesson(_ lesson: SubjectLessonsContent.Lesson) async -> LessonQuizContent? {
+        guard let topic = lesson.firstActiveTopic else {
+            errorMessage = "No active topic is available for this lesson yet."
+            return nil
+        }
+
+        errorMessage = ""
+        pendingLessonID = lesson.id
+
+        defer { pendingLessonID = nil }
+
+        do {
+            let openPayload = try await service.openLesson(lessonID: lesson.id)
+            if let currentContent = content {
+                content = currentContent.applying(progress: openPayload.lessonProgress)
+            }
+
+            let quizPayload = try await service.getTopicQuiz(topicID: topic.id)
+            let nextLesson = content?.nextLesson(after: lesson.id)
+            return LessonQuizContent.build(
+                from: quizPayload,
+                lesson: lesson,
+                nextLesson: nextLesson
+            )
+        } catch let error as APIError {
+            if error.requiresSignOut {
+                requiresSignOut = true
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return nil
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+}
+
+private extension APIError {
+    var requiresSignOut: Bool {
+        switch self {
+        case .missingToken, .unauthorized:
+            return true
+        default:
+            return false
+        }
+    }
+}

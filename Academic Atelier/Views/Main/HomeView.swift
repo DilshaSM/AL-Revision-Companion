@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
     @StateObject private var dashboardViewModel = HomeDashboardViewModel()
 
     private let providedContent: HomeDashboardContent?
@@ -40,8 +41,8 @@ struct HomeView: View {
             }
         }
         .background(HomePalette.canvas.ignoresSafeArea())
-        .task {
-            await loadDashboard()
+        .task(id: refreshCenter.dashboardToken) {
+            await loadDashboard(forceRefresh: dashboardViewModel.content != nil)
         }
     }
 

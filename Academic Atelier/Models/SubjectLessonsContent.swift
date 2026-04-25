@@ -1,137 +1,101 @@
 import Foundation
 
 struct SubjectLessonsContent: Hashable {
-    var id: String
+    var id: Int
     var title: String
     var hero: Hero
     var units: [Unit]
 
-    static func placeholder(forID id: String) -> SubjectLessonsContent? {
-        placeholderByID[id]
+    static func build(from subject: APISubjectTree) -> SubjectLessonsContent {
+        let orderedUnits = subject.units
+            .sorted { $0.orderIndex < $1.orderIndex }
+            .map { Unit(apiUnit: $0) }
+        let lessons = orderedUnits.flatMap(\.lessons)
+        let completedCount = lessons.filter(\.isCompleted).count
+        let totalCount = max(lessons.count, 1)
+        let currentLesson = lessons.first(where: \.isInProgress)
+            ?? lessons.first(where: \.canStart)
+            ?? lessons.first
+        let progressValue = Double(completedCount) / Double(totalCount)
+
+        return SubjectLessonsContent(
+            id: subject.id,
+            title: subject.displayName,
+            hero: .init(
+                eyebrow: "Current Study",
+                title: subject.displayName,
+                progress: progressValue,
+                progressText: "\(Int((progressValue * 100).rounded()))%",
+                currentLessonTitle: currentLesson?.title ?? "No lessons available",
+                backgroundSymbolName: Self.symbolName(for: subject.icon)
+            ),
+            units: orderedUnits
+        )
     }
 
-    static let placeholderByID: [String: SubjectLessonsContent] = [
-        "combined-science": .init(
-            id: "combined-science",
-            title: "Combined Science",
-            hero: .init(
-                eyebrow: "Current Study",
-                title: "Combined Science",
-                progress: 0.78,
-                progressText: "78%",
-                currentLessonTitle: "Unit 4: Chemical Bonding",
-                backgroundSymbolName: "atom"
-            ),
-            units: [
-                .init(
-                    id: "chemistry-foundations",
-                    title: "Unit 01: Chemistry Foundations",
-                    lessonCountText: "2 Lessons",
-                    lessons: [
-                        .init(id: "atomic-structure", title: "Atomic Structure", state: .completed(detailText: "Completed • 35 mins")),
-                        .init(id: "mole-concept", title: "Mole Concept", state: .completed(detailText: "Completed • 50 mins"))
-                    ]
-                ),
-                .init(
-                    id: "chemical-bonding",
-                    title: "Unit 02: Chemical Bonding",
-                    lessonCountText: "2 Lessons",
-                    lessons: [
-                        .init(id: "ionic-covalent", title: "Unit 4: Chemical Bonding", state: .inProgress(progress: 0.78, progressText: "78% done")),
-                        .init(id: "intermolecular-forces", title: "Intermolecular Forces", state: .locked)
-                    ]
-                ),
-                .init(
-                    id: "energy-and-rates",
-                    title: "Unit 03: Energy and Rates",
-                    lessonCountText: nil,
-                    lessons: [
-                        .init(id: "reaction-energetics", title: "Reaction Energetics", state: .locked)
-                    ]
-                )
-            ]
-        ),
-        "pure-mathematics": .init(
-            id: "pure-mathematics",
-            title: "Pure Mathematics",
-            hero: .init(
-                eyebrow: "Current Study",
-                title: "Pure Mathematics",
-                progress: 0.64,
-                progressText: "64%",
-                currentLessonTitle: "Trigonometric Functions II",
-                backgroundSymbolName: "scope"
-            ),
-            units: [
-                .init(
-                    id: "algebra",
-                    title: "Unit 01: Algebra",
-                    lessonCountText: "2 Lessons",
-                    lessons: [
-                        .init(id: "indices", title: "Indices and Logarithms", state: .completed(detailText: "Completed • 45 mins")),
-                        .init(id: "quadratics", title: "Quadratic Equations", state: .completed(detailText: "Completed • 1h 20m"))
-                    ]
-                ),
-                .init(
-                    id: "trigonometry",
-                    title: "Unit 02: Trigonometry",
-                    lessonCountText: nil,
-                    lessons: [
-                        .init(id: "trig-functions-2", title: "Trigonometric Functions II", state: .inProgress(progress: 0.40, progressText: "40% done")),
-                        .init(id: "inverse-circular", title: "Inverse Circular Functions", state: .locked)
-                    ]
-                ),
-                .init(
-                    id: "calculus",
-                    title: "Unit 03: Calculus",
-                    lessonCountText: nil,
-                    lessons: [
-                        .init(id: "limits-continuity", title: "Limits and Continuity", state: .locked)
-                    ]
-                )
-            ]
-        ),
-        "modern-physics": .init(
-            id: "modern-physics",
-            title: "Modern Physics",
-            hero: .init(
-                eyebrow: "Current Study",
-                title: "Modern Physics",
-                progress: 0.45,
-                progressText: "45%",
-                currentLessonTitle: "Wave-Particle Duality",
-                backgroundSymbolName: "atom"
-            ),
-            units: [
-                .init(
-                    id: "relativity",
-                    title: "Unit 01: Relativity",
-                    lessonCountText: "2 Lessons",
-                    lessons: [
-                        .init(id: "frames-of-reference", title: "Frames of Reference", state: .completed(detailText: "Completed • 32 mins")),
-                        .init(id: "time-dilation", title: "Time Dilation", state: .completed(detailText: "Completed • 48 mins"))
-                    ]
-                ),
-                .init(
-                    id: "quantum-theory",
-                    title: "Unit 02: Quantum Theory",
-                    lessonCountText: nil,
-                    lessons: [
-                        .init(id: "wave-particle", title: "Wave-Particle Duality", state: .inProgress(progress: 0.45, progressText: "45% done")),
-                        .init(id: "photoelectric", title: "Photoelectric Effect", state: .locked)
-                    ]
-                ),
-                .init(
-                    id: "nuclear-physics",
-                    title: "Unit 03: Nuclear Physics",
-                    lessonCountText: nil,
-                    lessons: [
-                        .init(id: "radioactivity", title: "Radioactivity", state: .locked)
-                    ]
-                )
-            ]
+    func applying(progress: UserLessonProgress) -> SubjectLessonsContent {
+        var updated = self
+        updated.units = units.map { unit in
+            var unit = unit
+            unit.lessons = unit.lessons.map { lesson in
+                guard lesson.id == progress.lessonId else { return lesson }
+                var lesson = lesson
+                lesson.status = progress.status
+                lesson.progressPercent = progress.progressPercent
+                lesson.isLocked = false
+                return lesson
+            }
+            return unit
+        }
+
+        let lessons = updated.units.flatMap(\.lessons)
+        let completedCount = lessons.filter(\.isCompleted).count
+        let totalCount = max(lessons.count, 1)
+        let currentLesson = lessons.first(where: \.isInProgress)
+            ?? lessons.first(where: \.canStart)
+            ?? lessons.first
+        let progressValue = Double(completedCount) / Double(totalCount)
+        updated.hero = .init(
+            eyebrow: hero.eyebrow,
+            title: title,
+            progress: progressValue,
+            progressText: "\(Int((progressValue * 100).rounded()))%",
+            currentLessonTitle: currentLesson?.title ?? "No lessons available",
+            backgroundSymbolName: hero.backgroundSymbolName
         )
-    ]
+
+        return updated
+    }
+
+    func nextLesson(after lessonID: Int) -> Lesson? {
+        let lessons = units.flatMap(\.lessons)
+        guard let currentIndex = lessons.firstIndex(where: { $0.id == lessonID }) else {
+            return nil
+        }
+
+        for lesson in lessons.dropFirst(currentIndex + 1) where lesson.firstActiveTopic != nil {
+            return lesson
+        }
+
+        return nil
+    }
+
+    private static func symbolName(for backendIcon: String?) -> String {
+        switch backendIcon?.lowercased() {
+        case "flask":
+            return "flask.fill"
+        case "atom":
+            return "atom"
+        case "bolt":
+            return "bolt.fill"
+        case "leaf":
+            return "leaf.fill"
+        case "function":
+            return "function"
+        default:
+            return "book.fill"
+        }
+    }
 }
 
 extension SubjectLessonsContent {
@@ -145,66 +109,127 @@ extension SubjectLessonsContent {
     }
 
     struct Unit: Identifiable, Hashable {
-        var id: String
+        var id: Int
         var title: String
+        var description: String?
         var lessonCountText: String?
         var lessons: [Lesson]
+
+        init(apiUnit: APISubjectUnit) {
+            id = apiUnit.id
+            title = apiUnit.title
+            description = apiUnit.description
+            let lessonCount = apiUnit.lessons.count
+            lessonCountText = lessonCount == 0 ? nil : "\(lessonCount) " + (lessonCount == 1 ? "Lesson" : "Lessons")
+            lessons = apiUnit.lessons
+                .sorted { $0.orderIndex < $1.orderIndex }
+                .map { Lesson(apiLesson: $0) }
+        }
     }
 
     struct Lesson: Identifiable, Hashable {
-        var id: String
+        var id: Int
         var title: String
-        var state: State
+        var description: String?
+        var estimatedDurationMinutes: Int?
+        var status: String
+        var progressPercent: Int
+        var isLocked: Bool
+        var topics: [Topic]
+
+        init(apiLesson: APISubjectLesson) {
+            id = apiLesson.id
+            title = apiLesson.title
+            description = apiLesson.description
+            estimatedDurationMinutes = apiLesson.estimatedDurationMinutes
+            status = apiLesson.status
+            progressPercent = apiLesson.progressPercent
+            isLocked = apiLesson.isLocked
+            topics = apiLesson.topics
+                .sorted { $0.orderIndex < $1.orderIndex }
+                .map { Topic(apiTopic: $0) }
+        }
+    }
+
+    struct Topic: Identifiable, Hashable {
+        var id: Int
+        var title: String
+        var subtitle: String?
+        var estimatedDurationMinutes: Int?
+        var isActive: Bool
+
+        init(apiTopic: APISubjectTopic) {
+            id = apiTopic.id
+            title = apiTopic.title
+            subtitle = apiTopic.subtitle
+            estimatedDurationMinutes = apiTopic.estimatedDurationMinutes
+            isActive = apiTopic.isActive
+        }
     }
 
     enum State: Hashable {
+        case available(detailText: String)
         case completed(detailText: String)
         case inProgress(progress: Double, progressText: String)
-        case locked
-    }
-}
-
-extension SubjectLessonsContent {
-    var currentLesson: Lesson? {
-        allLessons.first(where: { $0.isInProgress }) ?? allLessons.first(where: { $0.isAccessible })
-    }
-
-    func quizContent(for lesson: Lesson) -> LessonQuizContent? {
-        LessonQuizContent.placeholder(forSubjectID: id, subjectTitle: title, lesson: lesson)
-    }
-
-    func nextLesson(after lesson: Lesson) -> Lesson? {
-        guard let currentIndex = allLessons.firstIndex(where: { $0.id == lesson.id }) else { return nil }
-        let nextIndex = allLessons.index(after: currentIndex)
-        guard allLessons.indices.contains(nextIndex) else { return nil }
-        return allLessons[nextIndex]
-    }
-
-    func unlockedQuizContent(for lesson: Lesson) -> LessonQuizContent? {
-        LessonQuizContent.placeholder(forSubjectID: id, subjectTitle: title, lesson: lesson, allowLocked: true)
-    }
-
-    private var allLessons: [Lesson] {
-        units.flatMap(\.lessons)
+        case locked(detailText: String)
     }
 }
 
 extension SubjectLessonsContent.Lesson {
-    var isAccessible: Bool {
-        switch state {
-        case .locked:
-            return false
-        case .completed, .inProgress:
-            return true
-        }
+    var firstActiveTopic: SubjectLessonsContent.Topic? {
+        topics.first(where: \.isActive)
+    }
+
+    var canStart: Bool {
+        !isLocked && firstActiveTopic != nil
+    }
+
+    var isCompleted: Bool {
+        status.uppercased() == "COMPLETED" || progressPercent >= 100
     }
 
     var isInProgress: Bool {
-        switch state {
-        case .inProgress:
-            return true
-        case .completed, .locked:
-            return false
+        status.uppercased() == "IN_PROGRESS" || (!isCompleted && progressPercent > 0)
+    }
+
+    var state: SubjectLessonsContent.State {
+        if isLocked {
+            return .locked(detailText: "Complete the previous lesson quiz to unlock.")
         }
+
+        if isCompleted {
+            return .completed(detailText: completionDetailText)
+        }
+
+        if isInProgress {
+            return .inProgress(
+                progress: Double(progressPercent) / 100.0,
+                progressText: "\(progressPercent)% done"
+            )
+        }
+
+        return .available(detailText: estimatedDurationText ?? "Ready to start")
+    }
+
+    var nextActionTitle: String {
+        firstActiveTopic?.title ?? title
+    }
+
+    private var estimatedDurationText: String? {
+        guard let estimatedDurationMinutes else { return nil }
+
+        if estimatedDurationMinutes == 1 {
+            return "1 min"
+        }
+
+        return "\(estimatedDurationMinutes) mins"
+    }
+
+    private var completionDetailText: String {
+        if let estimatedDurationText {
+            return "Completed • \(estimatedDurationText)"
+        }
+
+        return "Completed"
     }
 }

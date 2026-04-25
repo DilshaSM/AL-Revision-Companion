@@ -2,81 +2,63 @@ import Foundation
 
 struct SubjectsTabContent: Hashable {
     var title: String
-    var assessment: Assessment
+    var subtitle: String
+    var streamName: String?
     var subjectsSectionTitle: String
-    var subjectsActionTitle: String
     var subjects: [Subject]
 
-    static let placeholder = SubjectsTabContent(
-        title: "Your Subjects",
-        assessment: .init(
-            eyebrow: "Upcoming Assessment",
-            title: "Weekly Mock Exam",
-            subtitle: "Sunday, 09:00 AM • All Subjects",
-            badgeCountText: "7"
-        ),
-        subjectsSectionTitle: "Active Curriculum",
-        subjectsActionTitle: "View All",
-        subjects: [
-            .init(
-                id: "combined-science",
-                title: "Combined Science",
-                lastActiveText: "Last active: 2 hours ago",
-                levelText: "A-Level",
-                nextLessonLabel: "Next Lesson",
-                nextLessonTitle: "Unit 4: Chemical Bonding",
-                progress: 0.78,
-                progressText: "78%"
-            ),
-            .init(
-                id: "pure-mathematics",
-                title: "Pure Mathematics",
-                lastActiveText: "Last active: Yesterday",
-                levelText: "A-Level",
-                nextLessonLabel: "Next Lesson",
-                nextLessonTitle: "Integration: Areas",
-                progress: 0.62,
-                progressText: "62%"
-            ),
-            .init(
-                id: "modern-physics",
-                title: "Modern Physics",
-                lastActiveText: "Last active: 3 days ago",
-                levelText: "A-Level",
-                nextLessonLabel: "Next Lesson",
-                nextLessonTitle: "Wave-Particle Duality",
-                progress: 0.45,
-                progressText: "45%"
-            )
-        ]
-    )
+    static func build(subjects: [APISubject], user: User?) -> SubjectsTabContent {
+        let orderedSubjects = subjects
+            .sorted { $0.orderIndex < $1.orderIndex }
+            .map { Subject(apiSubject: $0) }
 
-    func lessonsContent(for subject: Subject) -> SubjectLessonsContent? {
-        SubjectLessonsContent.placeholderByID[subject.id]
-    }
+        let streamName = user?.selectedStream?.displayName
 
-    func lessonsContent(forID id: String) -> SubjectLessonsContent? {
-        SubjectLessonsContent.placeholderByID[id]
+        return SubjectsTabContent(
+            title: "Your Subjects",
+            subtitle: streamName.map { "Stream: \($0)" } ?? "Select a stream to load your curriculum.",
+            streamName: streamName,
+            subjectsSectionTitle: "Active Curriculum",
+            subjects: orderedSubjects
+        )
     }
 }
 
 extension SubjectsTabContent {
-    struct Assessment: Hashable {
-        var eyebrow: String
+    struct Subject: Identifiable, Hashable {
+        var id: Int
         var title: String
         var subtitle: String
-        var badgeCountText: String
-        var symbolName: String = "calendar"
-    }
+        var iconSystemName: String
+        var tintHex: String?
+        var streamId: Int
 
-    struct Subject: Identifiable, Hashable {
-        var id: String
-        var title: String
-        var lastActiveText: String
-        var levelText: String
-        var nextLessonLabel: String
-        var nextLessonTitle: String
-        var progress: Double
-        var progressText: String
+        init(apiSubject: APISubject) {
+            id = apiSubject.id
+            title = apiSubject.displayName
+            subtitle = apiSubject.name.replacingOccurrences(of: "_", with: " ").capitalized
+            iconSystemName = Self.symbolName(for: apiSubject.icon)
+            tintHex = apiSubject.color
+            streamId = apiSubject.streamId
+        }
+
+        private static func symbolName(for backendIcon: String?) -> String {
+            switch backendIcon?.lowercased() {
+            case "flask":
+                return "flask.fill"
+            case "atom":
+                return "atom"
+            case "bolt":
+                return "bolt.fill"
+            case "leaf":
+                return "leaf.fill"
+            case "function":
+                return "function"
+            case "book":
+                return "book.closed.fill"
+            default:
+                return "book.fill"
+            }
+        }
     }
 }

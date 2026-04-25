@@ -2,12 +2,15 @@ import SwiftUI
 
 struct ReviewAnswersView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
 
-    private let content: ReviewAnswersContent
+    @StateObject private var viewModel = ReviewAnswersViewModel()
+
+    private let result: QuizResultContent
     private let actions: ReviewAnswersActions
 
-    init(content: ReviewAnswersContent, actions: ReviewAnswersActions = .init()) {
-        self.content = content
+    init(result: QuizResultContent, actions: ReviewAnswersActions = .init()) {
+        self.result = result
         self.actions = actions
     }
 
@@ -15,8 +18,12 @@ struct ReviewAnswersView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
                 scoreHeader
-                reviewCards
-                recommendationCard
+                statusSection
+
+                if let review = viewModel.review {
+                    reviewCards(review: review)
+                    recommendationCard(review: review)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -31,6 +38,12 @@ struct ReviewAnswersView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .task {
+            await loadReview()
+        }
+        .refreshable {
+            await loadReview(forceRefresh: true)
+        }
     }
 }
 
@@ -52,7 +65,7 @@ private extension ReviewAnswersView {
                     .font(AppTypography.subjectQuizReviewTopBarTitle)
                     .foregroundStyle(SubjectsPalette.ink)
 
-                Text(content.subtitle.uppercased())
+                Text((viewModel.review?.subtitle ?? "Loading review").uppercased())
                     .font(AppTypography.subjectQuizReviewTopBarSubtitle)
                     .tracking(1.0)
                     .foregroundStyle(SubjectsPalette.secondaryMuted)
@@ -69,7 +82,7 @@ private extension ReviewAnswersView {
     var scoreHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
-                Text(content.subjectTitle)
+                Text(result.subjectTitle)
                     .font(AppTypography.subjectQuizReviewSubjectTitle)
                     .tracking(-0.6)
                     .foregroundStyle(SubjectsPalette.ink)
@@ -77,7 +90,7 @@ private extension ReviewAnswersView {
                 Spacer(minLength: 12)
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(content.scoreText)
+                    Text(viewModel.review?.scoreText ?? result.scoreText)
                         .font(AppTypography.subjectQuizReviewScoreValue)
                         .foregroundStyle(SubjectsPalette.brandBright)
                     Text("SCORE")
@@ -93,7 +106,7 @@ private extension ReviewAnswersView {
                     .overlay(alignment: .leading) {
                         Capsule(style: .continuous)
                             .fill(SubjectsPalette.brandBright)
-                            .frame(width: proxy.size.width * CGFloat(Int(content.scoreText.replacingOccurrences(of: "%", with: "")) ?? 0) / 100.0)
+                            .frame(width: proxy.size.width * CGFloat(result.scorePercent) / 100.0)
                     }
             }
             .frame(height: 8)
@@ -101,33 +114,53 @@ private extension ReviewAnswersView {
         .padding(.horizontal, 18)
     }
 
-    var reviewCards: some View {
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.review == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading review...")
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.muted)
+            }
+            .padding(.horizontal, 18)
+        } else if !viewModel.errorMessage.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await loadReview(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(SubjectsPalette.brand)
+            }
+            .padding(.horizontal, 18)
+        }
+    }
+
+    func reviewCards(review: ReviewAnswersContent) -> some View {
         VStack(spacing: 18) {
-            ForEach(content.questions) { question in
+            ForEach(review.questions) { question in
                 ReviewAnswerCard(question: question)
             }
         }
     }
 
-    var recommendationCard: some View {
+    func recommendationCard(review: ReviewAnswersContent) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("IMPROVE YOUR SCORE")
                 .font(AppTypography.subjectQuizReviewRecommendationLabel)
                 .tracking(0.8)
                 .foregroundStyle(SubjectsPalette.muted)
 
-            Text(content.recommendationText)
+            Text(review.recommendationText)
                 .font(AppTypography.subjectQuizReviewRecommendationBody)
                 .foregroundStyle(SubjectsPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Button {
-            } label: {
-                Text("View Recommendations")
-                    .font(AppTypography.subjectQuizReviewRecommendationAction)
-                    .foregroundStyle(SubjectsPalette.brandDark)
-            }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
@@ -156,20 +189,28 @@ private extension ReviewAnswersView {
             Button {
                 actions.onTapNextTopic()
             } label: {
-                Text("Next Topic")
+                Text(viewModel.review?.nextTopicTitle ?? "Next Topic")
                     .font(AppTypography.subjectQuizReviewFooterSecondary)
                     .foregroundStyle(SubjectsPalette.ink)
                     .frame(maxWidth: .infinity, minHeight: 56)
-                    .background(content.nextTopicQuizContent == nil ? SubjectsPalette.lockedBackground : Color(uiColor: .init(white: 0.92, alpha: 1)))
+                    .background(result.nextLesson == nil ? SubjectsPalette.lockedBackground : Color(uiColor: .init(white: 0.92, alpha: 1)))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(.plain)
-            .disabled(content.nextTopicQuizContent == nil)
+            .disabled(result.nextLesson == nil)
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)
         .padding(.bottom, 20)
         .background(.ultraThinMaterial)
+    }
+
+    func loadReview(forceRefresh: Bool = false) async {
+        await viewModel.load(for: result, forceRefresh: forceRefresh)
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+        }
     }
 }
 
@@ -259,26 +300,28 @@ private struct ReviewAnswerCard: View {
         iconSystemName: String,
         iconTint: Color
     ) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: iconSystemName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(iconTint)
+                .padding(.top, 3)
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(label)
                     .font(AppTypography.subjectQuizReviewAnswerLabel)
-                    .tracking(0.8)
-                    .foregroundStyle(SubjectsPalette.muted)
+                    .tracking(0.9)
+                    .foregroundStyle(SubjectsPalette.muted.opacity(0.8))
+
                 Text(value)
                     .font(AppTypography.subjectQuizReviewAnswerValue)
                     .foregroundStyle(tint)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer(minLength: 12)
-
-            Image(systemName: iconSystemName)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(iconTint)
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(16)
         .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }

@@ -15,9 +15,9 @@ struct QuizResultView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
                 heroSection
-                timeCard
+                summarySection
+                detailSection
                 actionSection
-                topicBreakdownSection
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
@@ -62,6 +62,10 @@ private extension QuizResultView {
                 .tracking(-0.9)
                 .foregroundStyle(SubjectsPalette.ink)
 
+            Text(content.topicTitle)
+                .font(AppTypography.subjectQuizResultMessage)
+                .foregroundStyle(SubjectsPalette.muted)
+
             VStack(spacing: 24) {
                 ZStack {
                     Circle()
@@ -74,7 +78,7 @@ private extension QuizResultView {
                             .font(AppTypography.subjectQuizResultScoreValue)
                             .foregroundStyle(SubjectsPalette.brandBright)
 
-                        Text("MASTERY")
+                        Text(content.masteryLevel.uppercased())
                             .font(AppTypography.subjectQuizResultScoreLabel)
                             .tracking(2)
                             .foregroundStyle(SubjectsPalette.muted)
@@ -130,32 +134,88 @@ private extension QuizResultView {
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    var timeCard: some View {
+    var summarySection: some View {
+        VStack(spacing: 14) {
+            detailCard(
+                title: "TIME TAKEN",
+                value: content.timeTakenText,
+                systemName: "timer",
+                tint: SubjectsPalette.brandBright
+            )
+
+            HStack(spacing: 14) {
+                detailCard(
+                    title: "SUBJECT PROGRESS",
+                    value: content.subjectProgressText,
+                    systemName: "chart.bar.fill",
+                    tint: SubjectsPalette.brandBright
+                )
+
+                detailCard(
+                    title: "MASTERY",
+                    value: content.masteryLevel,
+                    systemName: "sparkles",
+                    tint: SubjectsPalette.resultCorrect
+                )
+            }
+        }
+    }
+
+    func detailCard(title: String, value: String, systemName: String, tint: Color) -> some View {
         HStack(spacing: 14) {
             Circle()
                 .fill(SubjectsPalette.badgeBackground)
                 .frame(width: 40, height: 40)
                 .overlay {
-                    Image(systemName: "timer")
+                    Image(systemName: systemName)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(SubjectsPalette.brandBright)
+                        .foregroundStyle(tint)
                 }
 
-            Text("TIME TAKEN")
-                .font(AppTypography.subjectQuizResultTimeLabel)
-                .tracking(1.6)
-                .foregroundStyle(SubjectsPalette.muted)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(AppTypography.subjectQuizResultTimeLabel)
+                    .tracking(1.4)
+                    .foregroundStyle(SubjectsPalette.muted)
 
-            Spacer(minLength: 12)
+                Text(value)
+                    .font(AppTypography.subjectQuizResultTimeValue)
+                    .foregroundStyle(SubjectsPalette.ink)
+            }
 
-            Text(content.timeTakenText)
-                .font(AppTypography.subjectQuizResultTimeValue)
-                .foregroundStyle(SubjectsPalette.ink)
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
-        .frame(maxWidth: .infinity, minHeight: 80)
+        .frame(maxWidth: .infinity, minHeight: 88)
         .background(SubjectsPalette.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    var detailSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            detailCard(
+                title: "LESSON COMPLETION",
+                value: content.completedLessonsText,
+                systemName: "checkmark.seal.fill",
+                tint: SubjectsPalette.resultCorrect
+            )
+
+            detailCard(
+                title: "STUDY SESSION",
+                value: content.studySessionText,
+                systemName: "clock.arrow.circlepath",
+                tint: SubjectsPalette.brandBright
+            )
+
+            if let submittedAtText = content.submittedAtText {
+                detailCard(
+                    title: "SUBMITTED",
+                    value: submittedAtText,
+                    systemName: "calendar",
+                    tint: SubjectsPalette.brandBright
+                )
+            }
+        }
     }
 
     var actionSection: some View {
@@ -167,12 +227,12 @@ private extension QuizResultView {
                     .font(AppTypography.subjectQuizResultPrimaryButton)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 64)
-                    .background(content.nextTopicQuizContent == nil ? SubjectsPalette.quizNextDisabled : SubjectsPalette.brandBright)
+                    .background(content.nextLesson == nil ? SubjectsPalette.quizNextDisabled : SubjectsPalette.brandBright)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: content.nextTopicQuizContent == nil ? .clear : SubjectsPalette.quizPrimaryShadow, radius: 20, x: 0, y: 10)
+                    .shadow(color: content.nextLesson == nil ? .clear : SubjectsPalette.quizPrimaryShadow, radius: 20, x: 0, y: 10)
             }
             .buttonStyle(.plain)
-            .disabled(content.nextTopicQuizContent == nil)
+            .disabled(content.nextLesson == nil)
 
             HStack(spacing: 20) {
                 secondaryActionButton(
@@ -215,70 +275,10 @@ private extension QuizResultView {
         }
         .buttonStyle(.plain)
     }
-
-    var topicBreakdownSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Topic Breakdown")
-                .font(AppTypography.subjectQuizResultSectionTitle)
-                .tracking(-0.4)
-                .foregroundStyle(SubjectsPalette.ink)
-
-            VStack(spacing: 18) {
-                ForEach(content.topicBreakdown) { item in
-                    TopicBreakdownCard(item: item)
-                }
-            }
-        }
-        .padding(.top, 12)
-    }
 }
 
 struct QuizResultActions {
     var onTapNextTopic: () -> Void = {}
     var onTapReviewAnswers: () -> Void = {}
     var onTapRetryQuiz: () -> Void = {}
-}
-
-private struct TopicBreakdownCard: View {
-    let item: QuizResultContent.TopicBreakdown
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 16) {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.white)
-                    .frame(width: 56, height: 56)
-                    .overlay {
-                        Image(systemName: item.iconSystemName)
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(item.tint == .green ? SubjectsPalette.resultCorrect : SubjectsPalette.brandBright)
-                    }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(AppTypography.subjectQuizResultBreakdownTitle)
-                        .foregroundStyle(SubjectsPalette.ink)
-
-                    Text("\(item.questionCount) Questions • \(item.masteryPercent)% Mastery")
-                        .font(AppTypography.subjectQuizResultBreakdownMeta)
-                        .foregroundStyle(SubjectsPalette.muted)
-                }
-            }
-
-            GeometryReader { proxy in
-                Capsule(style: .continuous)
-                    .fill(SubjectsPalette.quizProgressTrack)
-                    .overlay(alignment: .leading) {
-                        Capsule(style: .continuous)
-                            .fill(item.tint == .green ? SubjectsPalette.resultCorrect : SubjectsPalette.brandBright)
-                            .frame(width: proxy.size.width * CGFloat(item.masteryPercent) / 100.0)
-                    }
-            }
-            .frame(height: 8)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .background(SubjectsPalette.surfaceMuted.opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-    }
 }
