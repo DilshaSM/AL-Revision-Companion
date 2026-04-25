@@ -43,7 +43,7 @@ struct SignUpView: View {
 private extension SignUpView {
     var backButton: some View {
         Button {
-            session.authRoute = .signIn
+            session.showSignIn()
         } label: {
             Image(systemName: "arrow.left")
                 .font(.system(size: 26, weight: .medium))
@@ -128,7 +128,7 @@ private extension SignUpView {
                     .foregroundStyle(.primary)
 
                 Button("Sign In") {
-                    session.authRoute = .signIn
+                    session.showSignIn()
                 }
                 .font(AppTypography.authPromptAction)
                 .foregroundStyle(AppColors.primary)
@@ -138,16 +138,23 @@ private extension SignUpView {
     }
 
     var createButtonSection: some View {
-        PrimaryButton(title: "Create Account") {
-            if let user = viewModel.signUp() {
-                session.signIn(user: user)
+        PrimaryButton(
+            title: "Create Account",
+            isLoading: viewModel.isLoading,
+            isDisabled: viewModel.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || viewModel.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || viewModel.password.isEmpty
+                || viewModel.confirmPassword.isEmpty
+        ) {
+            Task {
+                await viewModel.signUp(using: session)
             }
         }
     }
 
     var termsSection: some View {
         VStack(spacing: 6) {
-            Text("By continuing, you agree to Academic Atelier's")
+            Text("By continuing, you agree to A/L Revision Companion's")
                 .font(AppTypography.authLegalCopy)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

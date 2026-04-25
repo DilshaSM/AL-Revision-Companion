@@ -1,5 +1,5 @@
 //
-//  Academic_AtelierUITestsLaunchTests.swift
+//  ALRevisionCompanionUITestsLaunchTests.swift
 //  AL Revision CompanionUITests
 //
 import XCTest

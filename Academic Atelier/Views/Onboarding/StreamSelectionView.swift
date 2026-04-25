@@ -19,6 +19,9 @@ struct StreamSelectionView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .task {
+            await session.ensureAvailableStreams()
+        }
     }
 }
 
@@ -42,36 +45,37 @@ private extension StreamSelectionView {
 
     var streamListSection: some View {
         VStack(spacing: 18) {
-            StreamSelectionCard(
-                title: "Science",
-                subtitle: "STEM focused mastery. (Physics, Chemistry, Biology)",
-                iconName: "stream_science"
-            ) {
-                session.updateSelectedStream(.science)
+            if session.isLoadingStreams && session.availableStreams.isEmpty {
+                ProgressView("Loading streams...")
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 24)
             }
 
-            StreamSelectionCard(
-                title: "Commerce",
-                subtitle: "Finance & global markets. (Accounting, Economics, Business)",
-                iconName: "stream_commerce"
-            ) {
-                session.updateSelectedStream(.commerce)
+            if !session.streamErrorMessage.isEmpty {
+                Text(session.streamErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            StreamSelectionCard(
-                title: "Arts",
-                subtitle: "Thinking, history & media. (History, Logic, Media, Languages)",
-                iconName: "stream_arts"
-            ) {
-                session.updateSelectedStream(.arts)
+            ForEach(session.availableStreams) { stream in
+                StreamSelectionCard(
+                    title: stream.displayName,
+                    subtitle: stream.description ?? stream.subjectSummary.replacingOccurrences(of: "\n", with: ", "),
+                    iconName: stream.assetName
+                ) {
+                    Task {
+                        await session.selectStream(stream)
+                    }
+                }
+                .disabled(session.activeStreamSelectionID != nil)
             }
 
-            StreamSelectionCard(
-                title: "Technology",
-                subtitle: "Software & innovation. (Eng Tech, Science for Tech, ICT)",
-                iconName: "stream_technology"
-            ) {
-                session.updateSelectedStream(.technology)
+            if !session.isLoadingStreams && session.availableStreams.isEmpty {
+                Text("No streams are available right now. Try again in a moment.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

@@ -20,24 +20,25 @@ struct ProfileContent {
     let signOutTitle: String
 
     static func build(user: User?) -> Self {
-        let fullName = user?.fullName ?? "Chamith Gamage"
+        let fullName = user?.fullName ?? "Student"
         let selectedStream = user?.selectedStream
+        let hasSelectedStream = user?.streamId != nil
 
         return Self(
             title: "Profile",
             fullName: fullName,
-            streamTitle: selectedStream?.profileDisplayTitle ?? "Physical Science",
+            streamTitle: selectedStream?.profileDisplayTitle ?? (hasSelectedStream ? "Selected Stream" : "Pending Stream Selection"),
             academicSectionTitle: "Academic Identity",
             identityItems: [
                 .init(
                     id: .subjectStream,
                     title: "Subject Stream",
-                    detail: selectedStream?.subjectSummary ?? "Combined Maths, Physics,\nChemistry"
+                    detail: selectedStream?.subjectSummary ?? (hasSelectedStream ? "Stream synced from your account." : "Complete onboarding to choose your academic stream.")
                 ),
                 .init(
                     id: .registrationNumber,
                     title: "Registration Number",
-                    detail: "AL/2024/09321-S"
+                    detail: user?.registrationNumber ?? "Not assigned yet"
                 )
             ],
             signOutTitle: "Sign Out of A/L Revision Companion"
@@ -77,32 +78,4 @@ struct ProfileSettingsContent {
             )
         ]
     )
-}
-
-private extension Stream {
-    var profileDisplayTitle: String {
-        switch self {
-        case .science:
-            return "Physical Science"
-        case .commerce:
-            return "Commerce"
-        case .arts:
-            return "Arts"
-        case .technology:
-            return "Technology"
-        }
-    }
-
-    var subjectSummary: String {
-        switch self {
-        case .science:
-            return "Combined Maths, Physics,\nChemistry"
-        case .commerce:
-            return "Accounting, Economics,\nBusiness Studies"
-        case .arts:
-            return "History, Political Science,\nMedia Studies"
-        case .technology:
-            return "Engineering Tech, Science for Tech,\nICT"
-        }
-    }
 }

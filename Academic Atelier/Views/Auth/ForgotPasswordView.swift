@@ -2,7 +2,18 @@ import SwiftUI
 
 struct ForgotPasswordView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var email: String = ""
+    @StateObject private var viewModel: PasswordResetViewModel
+    @State private var showVerification = false
+
+    private let onCompleted: () -> Void
+
+    init(
+        email: String = "",
+        onCompleted: @escaping () -> Void = {}
+    ) {
+        _viewModel = StateObject(wrappedValue: PasswordResetViewModel(email: email))
+        self.onCompleted = onCompleted
+    }
 
     var body: some View {
         ZStack {
@@ -21,6 +32,12 @@ struct ForgotPasswordView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .navigationDestination(isPresented: $showVerification) {
+            VerificationView(
+                viewModel: viewModel,
+                onCompleted: onCompleted
+            )
+        }
     }
 }
 
@@ -65,25 +82,35 @@ private extension ForgotPasswordView {
             AppTextField(
                 title: "Email",
                 placeholder: "name@university.edu",
-                text: $email,
+                text: $viewModel.email,
                 keyboardType: .emailAddress
             )
 
-            NavigationLink {
-                VerificationView(email: email)
-            } label: {
-                Text("Continue")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(AppColors.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .blue.opacity(0.18), radius: 10, x: 0, y: 6)
+            if !viewModel.errorMessage.isEmpty {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
-            .disabled(email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.7 : 1.0)
+
+            if !viewModel.infoMessage.isEmpty {
+                Text(viewModel.infoMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            PrimaryButton(
+                title: "Continue",
+                isLoading: viewModel.isLoading,
+                isDisabled: viewModel.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
+                Task {
+                    if await viewModel.sendResetCode() {
+                        showVerification = true
+                    }
+                }
+            }
         }
     }
 }

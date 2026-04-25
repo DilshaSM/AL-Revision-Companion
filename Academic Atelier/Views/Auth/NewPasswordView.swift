@@ -2,11 +2,17 @@ import SwiftUI
 
 struct NewPasswordView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var session: SessionViewModel
+    @ObservedObject var viewModel: PasswordResetViewModel
 
-    @State private var password: String = ""
-    @State private var confirmPassword: String = ""
-    @State private var errorMessage: String = ""
+    private let onCompleted: () -> Void
+
+    init(
+        viewModel: PasswordResetViewModel,
+        onCompleted: @escaping () -> Void = {}
+    ) {
+        self.viewModel = viewModel
+        self.onCompleted = onCompleted
+    }
 
     var body: some View {
         ZStack {
@@ -68,57 +74,42 @@ private extension NewPasswordView {
         VStack(spacing: 18) {
             PasswordField(
                 title: "Enter New Password",
-                placeholder: "8 symbols at least",
-                text: $password
+                placeholder: "6 characters at least",
+                text: $viewModel.newPassword
             )
 
             PasswordField(
                 title: "Confirm Password",
-                placeholder: "8 symbols at least",
-                text: $confirmPassword
+                placeholder: "6 characters at least",
+                text: $viewModel.confirmPassword
             )
 
-            if !errorMessage.isEmpty {
-                Text(errorMessage)
+            if !viewModel.errorMessage.isEmpty {
+                Text(viewModel.errorMessage)
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Button {
-                handlePasswordUpdate()
-            } label: {
-                Text("Update password")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(AppColors.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .blue.opacity(0.18), radius: 10, x: 0, y: 6)
+            if !viewModel.infoMessage.isEmpty {
+                Text(viewModel.infoMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
+
+            PrimaryButton(
+                title: "Update password",
+                isLoading: viewModel.isLoading,
+                isDisabled: viewModel.newPassword.isEmpty || viewModel.confirmPassword.isEmpty
+            ) {
+                Task {
+                    if await viewModel.resetPassword() {
+                        onCompleted()
+                    }
+                }
+            }
             .padding(.top, 6)
         }
-    }
-
-    func handlePasswordUpdate() {
-        guard !password.isEmpty, !confirmPassword.isEmpty else {
-            errorMessage = "Please fill in both password fields."
-            return
-        }
-
-        guard password.count >= 8 else {
-            errorMessage = "Password must be at least 8 characters."
-            return
-        }
-
-        guard password == confirmPassword else {
-            errorMessage = "Passwords do not match."
-            return
-        }
-
-        errorMessage = ""
-        session.authRoute = .signIn
     }
 }

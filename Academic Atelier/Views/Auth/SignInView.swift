@@ -5,6 +5,7 @@ struct SignInView: View {
     @StateObject private var viewModel = AuthViewModel()
     
     @State private var showPassword = false
+    @State private var isShowingForgotPassword = false
 
     var body: some View {
         ZStack {
@@ -30,6 +31,13 @@ struct SignInView: View {
                         .padding(.bottom, 40)
                 }
                 .padding(.horizontal, 24)
+            }
+        }
+        .sheet(isPresented: $isShowingForgotPassword) {
+            NavigationStack {
+                ForgotPasswordView {
+                    isShowingForgotPassword = false
+                }
             }
         }
     }
@@ -79,9 +87,13 @@ private extension SignInView {
                     .padding(.top, 4)
             }
 
-            PrimaryButton(title: "Sign In") {
-                if let user = viewModel.signIn() {
-                    session.signIn(user: user)
+            PrimaryButton(
+                title: "Sign In",
+                isLoading: viewModel.isLoading,
+                isDisabled: viewModel.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.password.isEmpty
+            ) {
+                Task {
+                    await viewModel.signIn(using: session)
                 }
             }
         }
@@ -89,7 +101,7 @@ private extension SignInView {
 
     var forgotPasswordSection: some View {
         Button("Forgot Password?") {
-            // Later phase
+            isShowingForgotPassword = true
         }
         .font(AppTypography.authInlineAction)
         .foregroundStyle(AppColors.primary)
@@ -166,7 +178,7 @@ private extension SignInView {
             Spacer()
 
             Button {
-                session.authRoute = .signUp
+                session.showSignUp()
             } label: {
                 Text("Get Started")
                     .font(AppTypography.authPillLabel)

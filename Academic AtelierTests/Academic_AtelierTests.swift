@@ -1,5 +1,5 @@
 //
-//  Academic_AtelierTests.swift
+//  ALRevisionCompanionTests.swift
 //  AL Revision CompanionTests
 //
 import Testing

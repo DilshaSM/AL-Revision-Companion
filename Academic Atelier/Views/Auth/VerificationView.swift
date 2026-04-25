@@ -2,11 +2,22 @@ import SwiftUI
 
 struct VerificationView: View {
     @Environment(\.dismiss) private var dismiss
-    let email: String
+    @ObservedObject var viewModel: PasswordResetViewModel
     
     @State private var codeDigits: [String] = ["", "", "", ""]
-    @State private var timeRemaining: Int = 59
+    @State private var currentTime: Date = Date()
+    @State private var showNewPassword = false
+
+    private let onCompleted: () -> Void
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    init(
+        viewModel: PasswordResetViewModel,
+        onCompleted: @escaping () -> Void = {}
+    ) {
+        self.viewModel = viewModel
+        self.onCompleted = onCompleted
+    }
 
     var body: some View {
         ZStack {
@@ -28,9 +39,17 @@ struct VerificationView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .onReceive(timer) { _ in
-            guard timeRemaining > 0 else { return }
-            timeRemaining -= 1
+        .navigationDestination(isPresented: $showNewPassword) {
+            NewPasswordView(
+                viewModel: viewModel,
+                onCompleted: onCompleted
+            )
+        }
+        .onReceive(timer) { value in
+            currentTime = value
+        }
+        .onAppear {
+            syncDigitsFromViewModel()
         }
     }
 }
@@ -92,28 +111,42 @@ private extension VerificationView {
     }
 
     var actionSection: some View {
-        NavigationLink {
-            NewPasswordView()
-        } label: {
-            Text("Continue")
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(AppColors.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: .blue.opacity(0.18), radius: 10, x: 0, y: 6)
+        VStack(spacing: 14) {
+            if !viewModel.errorMessage.isEmpty {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !viewModel.infoMessage.isEmpty {
+                Text(viewModel.infoMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            PrimaryButton(
+                title: "Continue",
+                isLoading: viewModel.isLoading,
+                isDisabled: !isCodeComplete
+            ) {
+                Task {
+                    viewModel.verificationCode = codeDigits.joined()
+
+                    if await viewModel.verifyCode() {
+                        showNewPassword = true
+                    }
+                }
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!isCodeComplete)
-        .opacity(isCodeComplete ? 1.0 : 0.7)
         .padding(.top, 8)
     }
 
     var timerSection: some View {
-        Text("00:\(String(format: "%02d", timeRemaining))")
+        Text(timerLabel)
             .font(.system(size: 22, weight: .medium))
-            .foregroundStyle(.orange)
+            .foregroundStyle(timeRemaining > 0 ? .orange : .red)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 28)
     }
@@ -124,7 +157,12 @@ private extension VerificationView {
                 .foregroundStyle(.secondary)
 
             Button("Resend") {
-                timeRemaining = 59
+                Task {
+                    let didSend = await viewModel.sendResetCode()
+                    if didSend {
+                        syncDigitsFromViewModel()
+                    }
+                }
             }
             .foregroundStyle(.orange)
         }
@@ -137,6 +175,21 @@ private extension VerificationView {
         codeDigits.allSatisfy { $0.count == 1 }
     }
 
+    var timeRemaining: Int {
+        guard let expiresAt = viewModel.expiresAt else { return 0 }
+        return max(0, Int(expiresAt.timeIntervalSince(currentTime)))
+    }
+
+    var timerLabel: String {
+        if timeRemaining == 0 {
+            return "Code expired"
+        }
+
+        let minutes = timeRemaining / 60
+        let seconds = timeRemaining % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
     func binding(for index: Int) -> Binding<String> {
         Binding(
             get: { codeDigits[index] },
@@ -145,5 +198,13 @@ private extension VerificationView {
                 codeDigits[index] = String(filtered.prefix(1))
             }
         )
+    }
+
+    func syncDigitsFromViewModel() {
+        let digits = Array(viewModel.verificationCode.prefix(4)).map(String.init)
+
+        for index in 0..<codeDigits.count {
+            codeDigits[index] = index < digits.count ? digits[index] : ""
+        }
     }
 }
