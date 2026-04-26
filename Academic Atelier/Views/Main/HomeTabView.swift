@@ -47,8 +47,7 @@ struct HomeTabView: View {
                     QuickRevisionTopicSelectionView(
                         subject: subject,
                         actions: .init(
-                            onTapTopic: handleTopicTap,
-                            onTapRecentTopic: { handleRecentTopicTap($0, in: subject) }
+                            onTapTopic: handleTopicTap
                         )
                     )
                 case let .topicContent(topic):
@@ -91,12 +90,7 @@ struct HomeTabView: View {
         path.append(.topicSelection(subject))
     }
 
-    private func handleTopicTap(_ topic: QuickRevisionSubject.Topic) {
-        path.append(.topicContent(topic))
-    }
-
-    private func handleRecentTopicTap(_ recentTopic: QuickRevisionSubject.RecentTopic, in subject: QuickRevisionSubject) {
-        guard let topic = subject.topic(withID: recentTopic.id) else { return }
+    private func handleTopicTap(_ topic: QuickRevisionTopic) {
         path.append(.topicContent(topic))
     }
 
@@ -146,7 +140,7 @@ private enum HomeTabRoute: Hashable {
     case audioNotesDetail(AudioNotesDetailContent)
     case flashcardsSession(FlashcardsSessionContent)
     case topicSelection(QuickRevisionSubject)
-    case topicContent(QuickRevisionSubject.Topic)
+    case topicContent(QuickRevisionTopic)
     case progressInsights
     case progressRecommendations(ProgressTabContent.SubjectMastery)
 }

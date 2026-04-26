@@ -2,12 +2,12 @@ import SwiftUI
 
 struct QuickRevisionView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
+    @StateObject private var viewModel = QuickRevisionViewModel()
 
-    private let content: QuickRevisionContent
     private let actions: QuickRevisionViewActions
 
-    init(content: QuickRevisionContent = .placeholder, actions: QuickRevisionViewActions = .init()) {
-        self.content = content
+    init(actions: QuickRevisionViewActions = .init()) {
         self.actions = actions
     }
 
@@ -18,8 +18,8 @@ struct QuickRevisionView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 37) {
                     headerTextSection
+                    statusSection
                     studyMaterialsSection
-                    recentlyViewedSection
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
@@ -28,6 +28,12 @@ struct QuickRevisionView: View {
         }
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task {
+            await load(forceRefresh: false)
+        }
+        .refreshable {
+            await load(forceRefresh: true)
+        }
     }
 }
 
@@ -57,64 +63,83 @@ private extension QuickRevisionView {
 
     var headerTextSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(content.title)
+            Text(viewModel.content?.title ?? "Quick Revision")
                 .font(AppTypography.quickRevisionTitle)
                 .tracking(-0.75)
                 .foregroundStyle(QuickRevisionPalette.ink)
 
-            Text(content.subtitle)
+            Text(viewModel.content?.subtitle ?? "Review key concepts, formulas, and summaries by subject.")
                 .font(AppTypography.quickRevisionSubtitle)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    var studyMaterialsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(content.studyMaterialsTitle.uppercased())
-                .font(AppTypography.quickRevisionSectionLabel)
-                .tracking(1.2)
-                .foregroundStyle(QuickRevisionPalette.sectionLabel)
-                .padding(.horizontal, 4)
-
-            ForEach(content.studyMaterials) { material in
-                StudyMaterialRow(material: material) {
-                    actions.onTapStudyMaterial(material)
-                }
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading quick revision subjects...")
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
             }
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await load(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(QuickRevisionPalette.brand)
+            }
+        } else if viewModel.isLoading {
+            Text("Refreshing quick revision subjects...")
+                .font(.footnote)
+                .foregroundStyle(QuickRevisionPalette.muted)
         }
-        .padding(.top, 16)
     }
 
-    var recentlyViewedSection: some View {
+    var studyMaterialsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(content.recentlyViewedTitle.uppercased())
+            Text((viewModel.content?.studyMaterialsTitle ?? "Study Materials").uppercased())
                 .font(AppTypography.quickRevisionSectionLabel)
                 .tracking(1.2)
                 .foregroundStyle(QuickRevisionPalette.sectionLabel)
                 .padding(.horizontal, 4)
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 16),
-                    GridItem(.flexible(), spacing: 16)
-                ],
-                spacing: 16
-            ) {
-                ForEach(content.recentlyViewed) { item in
-                    RecentlyViewedCard(item: item) {
-                        actions.onTapRecentItem(item)
+            if let content = viewModel.content, content.studyMaterials.isEmpty {
+                Text(content.emptyStateMessage)
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+                    .padding(.horizontal, 4)
+            } else if let content = viewModel.content {
+                ForEach(content.studyMaterials) { material in
+                    StudyMaterialRow(material: material) {
+                        actions.onTapStudyMaterial(material)
                     }
                 }
             }
         }
         .padding(.top, 16)
     }
+
+    func load(forceRefresh: Bool) async {
+        await viewModel.load(forceRefresh: forceRefresh)
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+        }
+    }
 }
 
 struct QuickRevisionViewActions {
     var onTapStudyMaterial: (QuickRevisionSubject) -> Void = { _ in }
-    var onTapRecentItem: (QuickRevisionContent.RecentItem) -> Void = { _ in }
 }
 
 private struct StudyMaterialRow: View {
@@ -154,41 +179,6 @@ private struct StudyMaterialRow: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AppColors.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct RecentlyViewedCard: View {
-    let item: QuickRevisionContent.RecentItem
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(QuickRevisionPalette.brand)
-
-                    Text(item.relativeTime)
-                        .font(AppTypography.quickRevisionRecentMeta)
-                        .tracking(0.55)
-                        .foregroundStyle(QuickRevisionPalette.brand)
-                }
-
-                Text(item.title)
-                    .font(AppTypography.quickRevisionRecentTitle)
-                    .foregroundStyle(QuickRevisionPalette.ink)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Spacer(minLength: 0)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 99, alignment: .topLeading)
             .background(AppColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }

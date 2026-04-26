@@ -2,10 +2,13 @@ import SwiftUI
 
 struct QuickRevisionContentView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
+    @StateObject private var viewModel = QuickRevisionContentViewModel()
 
-    private let topic: QuickRevisionSubject.Topic
+    private let topic: QuickRevisionTopic
 
-    init(topic: QuickRevisionSubject.Topic) {
+    init(topic: QuickRevisionTopic) {
         self.topic = topic
     }
 
@@ -14,12 +17,10 @@ struct QuickRevisionContentView: View {
             topBar
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 44) {
+                VStack(alignment: .leading, spacing: 32) {
                     headerSection
-                    definitionsSection
-                    formulasSection
-                    lawsSection
-                    summarySection
+                    statusSection
+                    sectionsContent
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 24)
@@ -28,6 +29,9 @@ struct QuickRevisionContentView: View {
         }
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: topic.id) {
+            await loadTopic()
+        }
     }
 }
 
@@ -61,78 +65,75 @@ private extension QuickRevisionContentView {
 
     var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(topic.title)
+            Text(viewModel.content?.title ?? topic.title)
                 .font(AppTypography.quickRevisionTopicTitle)
                 .tracking(-0.9)
                 .foregroundStyle(QuickRevisionPalette.ink)
 
-            Text(topic.content.overview)
-                .font(AppTypography.quickRevisionContentSubtitle)
-                .foregroundStyle(QuickRevisionPalette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    var definitionsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionLabel(topic.content.keyDefinitionsTitle)
-
-            VStack(spacing: 18) {
-                ForEach(Array(topic.content.keyDefinitions.enumerated()), id: \.offset) { _, item in
-                    DefinitionCard(item: item)
+            if let content = viewModel.content {
+                if let subtitle = content.subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(AppTypography.quickRevisionContentSubtitle)
+                        .foregroundStyle(QuickRevisionPalette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(content.subjectName)
+                        .font(AppTypography.quickRevisionContentSubtitle)
+                        .foregroundStyle(QuickRevisionPalette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+            } else {
+                Text("Loading revision notes...")
+                    .font(AppTypography.quickRevisionContentSubtitle)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    var formulasSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionLabel(topic.content.formulasTitle)
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading revision notes...")
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            }
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
 
-            VStack(spacing: 18) {
-                ForEach(Array(topic.content.formulas.enumerated()), id: \.offset) { _, formula in
-                    FormulaCard(formula: formula)
+                Button("Retry") {
+                    Task {
+                        await loadTopic()
+                    }
                 }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(QuickRevisionPalette.brand)
             }
         }
     }
 
-    var lawsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionLabel(topic.content.lawsTitle)
-
-            VStack(spacing: 18) {
-                ForEach(Array(topic.content.laws.enumerated()), id: \.offset) { _, law in
-                    LawCard(law: law)
-                }
-            }
-        }
-    }
-
-    var summarySection: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            sectionLabel(topic.content.quickSummaryTitle)
-
-            VStack(alignment: .leading, spacing: 22) {
-                ForEach(Array(topic.content.summaryPoints.enumerated()), id: \.offset) { _, point in
-                    HStack(alignment: .top, spacing: 16) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(QuickRevisionPalette.brand)
-                            .padding(.top, 2)
-
-                        Text(point)
-                            .font(AppTypography.quickRevisionSummaryBody)
-                            .foregroundStyle(QuickRevisionPalette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
+    @ViewBuilder
+    var sectionsContent: some View {
+        if let content = viewModel.content {
+            if content.sections.isEmpty {
+                Text(content.emptyStateMessage)
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            } else {
+                VStack(alignment: .leading, spacing: 28) {
+                    ForEach(content.sections) { section in
+                        VStack(alignment: .leading, spacing: 16) {
+                            sectionLabel(section.labelText)
+                            QuickRevisionSectionCard(section: section)
+                        }
                     }
                 }
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 28)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(QuickRevisionPalette.summaryBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
     }
 
@@ -142,71 +143,123 @@ private extension QuickRevisionContentView {
             .tracking(2.0)
             .foregroundStyle(QuickRevisionPalette.sectionLabel)
     }
-}
 
-private struct DefinitionCard: View {
-    let item: QuickRevisionSubject.DefinitionItem
+    func loadTopic() async {
+        let didLoad = await viewModel.load(topic: topic)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(item.title)
-                .font(AppTypography.quickRevisionDefinitionTitle)
-                .foregroundStyle(QuickRevisionPalette.brand)
-
-            Text(item.detail)
-                .font(AppTypography.quickRevisionCardBody)
-                .foregroundStyle(QuickRevisionPalette.muted)
-                .fixedSize(horizontal: false, vertical: true)
+        if viewModel.requiresSignOut {
+            session.signOut()
+        } else if didLoad {
+            refreshCenter.didRecordStudyActivity()
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
-private struct FormulaCard: View {
-    let formula: QuickRevisionSubject.FormulaItem
+private struct QuickRevisionSectionCard: View {
+    let section: QuickRevisionTopicDetailContent.Section
 
     var body: some View {
-        VStack(spacing: 18) {
-            Text(formula.label.uppercased())
-                .font(AppTypography.quickRevisionFormulaLabel)
-                .tracking(1.2)
-                .foregroundStyle(QuickRevisionPalette.brand)
+        switch section.style {
+        case .definition:
+            alignedCard(
+                titleFont: AppTypography.quickRevisionDefinitionTitle,
+                titleColor: QuickRevisionPalette.brand,
+                bodyFont: AppTypography.quickRevisionCardBody,
+                bodyColor: QuickRevisionPalette.muted,
+                background: AppColors.cardBackground,
+                title: section.title,
+                body: section.content,
+                verticalPadding: 22
+            )
+        case .formula:
+            VStack(spacing: 18) {
+                Text(section.title.uppercased())
+                    .font(AppTypography.quickRevisionFormulaLabel)
+                    .tracking(1.2)
+                    .foregroundStyle(QuickRevisionPalette.brand)
 
-            Text(formula.expression)
-                .font(AppTypography.quickRevisionFormulaExpression)
-                .foregroundStyle(QuickRevisionPalette.ink)
-                .multilineTextAlignment(.center)
+                Text(section.content)
+                    .font(AppTypography.quickRevisionFormulaExpression)
+                    .foregroundStyle(QuickRevisionPalette.ink)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity)
+            .background(AppColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        case .principle:
+            alignedCard(
+                titleFont: AppTypography.quickRevisionLawTitle,
+                titleColor: QuickRevisionPalette.ink,
+                bodyFont: AppTypography.quickRevisionCardBody,
+                bodyColor: QuickRevisionPalette.muted,
+                background: AppColors.cardBackground,
+                title: section.title,
+                body: section.content,
+                verticalPadding: 26
+            )
+        case .summary:
+            VStack(alignment: .leading, spacing: 22) {
+                Text(section.title)
+                    .font(AppTypography.quickRevisionLawTitle)
+                    .foregroundStyle(QuickRevisionPalette.ink)
+
+                HStack(alignment: .top, spacing: 16) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(QuickRevisionPalette.brand)
+                        .padding(.top, 2)
+
+                    Text(section.content)
+                        .font(AppTypography.quickRevisionSummaryBody)
+                        .foregroundStyle(QuickRevisionPalette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 28)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(QuickRevisionPalette.summaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        case .generic:
+            alignedCard(
+                titleFont: AppTypography.quickRevisionLawTitle,
+                titleColor: QuickRevisionPalette.ink,
+                bodyFont: AppTypography.quickRevisionCardBody,
+                bodyColor: QuickRevisionPalette.muted,
+                background: AppColors.cardBackground,
+                title: section.title,
+                body: section.content,
+                verticalPadding: 24
+            )
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 32)
-        .frame(maxWidth: .infinity)
-        .background(AppColors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
-}
 
-private struct LawCard: View {
-    let law: QuickRevisionSubject.LawItem
-
-    var body: some View {
+    func alignedCard(
+        titleFont: Font,
+        titleColor: Color,
+        bodyFont: Font,
+        bodyColor: Color,
+        background: Color,
+        title: String,
+        body: String,
+        verticalPadding: CGFloat
+    ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(law.title)
-                .font(AppTypography.quickRevisionLawTitle)
-                .foregroundStyle(QuickRevisionPalette.ink)
+            Text(title)
+                .font(titleFont)
+                .foregroundStyle(titleColor)
 
-            Text(law.detail)
-                .font(AppTypography.quickRevisionCardBody)
-                .foregroundStyle(QuickRevisionPalette.muted)
+            Text(body)
+                .font(bodyFont)
+                .foregroundStyle(bodyColor)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 28)
-        .padding(.vertical, 26)
+        .padding(.vertical, verticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColors.cardBackground)
+        .background(background)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
