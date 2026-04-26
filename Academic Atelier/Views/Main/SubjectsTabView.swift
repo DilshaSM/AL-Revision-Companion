@@ -233,6 +233,7 @@ private extension SubjectsTabView {
                 }
 
                 _ = try await subjectsService.openLesson(lessonID: refreshedLesson.id)
+                refreshCenter.didOpenLesson()
                 let quizPayload = try await subjectsService.getTopicQuiz(topicID: activeTopic.id)
                 let nextQuizContent = LessonQuizContent.build(
                     from: quizPayload,

@@ -1,23 +1,28 @@
 import SwiftUI
 
 struct ProgressTabView: View {
-    private let content: ProgressTabContent
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
+
+    @StateObject private var viewModel = ProgressTabViewModel()
+
     private let actions: ProgressTabActions
 
-    init(
-        content: ProgressTabContent = .placeholder,
-        actions: ProgressTabActions = .init()
-    ) {
-        self.content = content
+    init(actions: ProgressTabActions = .init()) {
         self.actions = actions
     }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 40) {
+            VStack(alignment: .leading, spacing: 32) {
                 headerSection
-                weeklyEngagementSection
-                subjectMasterySection
+                statusSection
+
+                if let content = viewModel.content {
+                    weeklyEngagementSection(content: content)
+                    subjectMasterySection(content: content)
+                }
             }
             .padding(.horizontal, 24)
             .padding(.top, 30)
@@ -25,18 +30,30 @@ struct ProgressTabView: View {
         }
         .background(ProgressPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: refreshCenter.progressToken) {
+            await load(forceRefresh: viewModel.content != nil)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, viewModel.content != nil else { return }
+            Task {
+                await load(forceRefresh: true)
+            }
+        }
+        .refreshable {
+            await load(forceRefresh: true)
+        }
     }
 }
 
 private extension ProgressTabView {
     var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(content.title)
+            Text(viewModel.content?.title ?? "Revision Insights")
                 .font(AppTypography.progressTitle)
                 .tracking(-0.75)
                 .foregroundStyle(ProgressPalette.textPrimary)
 
-            Text(content.subtitle)
+            Text(viewModel.content?.subtitle ?? "Track your weekly study progress.")
                 .font(AppTypography.progressSubtitle)
                 .foregroundStyle(ProgressPalette.textSecondary)
                 .lineSpacing(8)
@@ -44,7 +61,37 @@ private extension ProgressTabView {
         }
     }
 
-    var weeklyEngagementSection: some View {
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading progress...")
+                    .font(.footnote)
+                    .foregroundStyle(ProgressPalette.textSecondary)
+            }
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await load(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(ProgressPalette.brand)
+            }
+        } else if viewModel.isLoading {
+            Text("Refreshing progress...")
+                .font(.footnote)
+                .foregroundStyle(ProgressPalette.textSecondary)
+        }
+    }
+
+    func weeklyEngagementSection(content: ProgressTabContent) -> some View {
         VStack(alignment: .leading, spacing: 32) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(content.weeklyEngagement.eyebrow.uppercased())
@@ -74,10 +121,9 @@ private extension ProgressTabView {
                 .stroke(ProgressPalette.cardBorder, lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: ProgressPalette.cardBorder.opacity(0.5), radius: 0, x: 0, y: 0)
     }
 
-    var subjectMasterySection: some View {
+    func subjectMasterySection(content: ProgressTabContent) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(content.subjectMasteryTitle)
@@ -88,14 +134,20 @@ private extension ProgressTabView {
                 Text(content.subjectMasterySubtitle)
                     .font(AppTypography.progressSectionSubtitle)
                     .foregroundStyle(ProgressPalette.textSecondary)
-                    .padding(.top, 0)
             }
             .padding(.horizontal, 8)
 
-            VStack(spacing: 16) {
-                ForEach(content.subjectMasteries) { mastery in
-                    SubjectMasteryRow(mastery: mastery) {
-                        handleTapSubjectMastery(mastery)
+            if content.subjectMasteries.isEmpty {
+                Text(content.emptyStateMessage)
+                    .font(.footnote)
+                    .foregroundStyle(ProgressPalette.textSecondary)
+                    .padding(.horizontal, 8)
+            } else {
+                VStack(spacing: 16) {
+                    ForEach(content.subjectMasteries) { mastery in
+                        SubjectMasteryRow(mastery: mastery) {
+                            actions.onTapSubjectMastery(mastery)
+                        }
                     }
                 }
             }
@@ -103,8 +155,12 @@ private extension ProgressTabView {
         .padding(.top, 16)
     }
 
-    func handleTapSubjectMastery(_ mastery: ProgressTabContent.SubjectMastery) {
-        actions.onTapSubjectMastery(mastery)
+    func load(forceRefresh: Bool = false) async {
+        await viewModel.load(forceRefresh: forceRefresh)
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+        }
     }
 }
 
@@ -120,13 +176,13 @@ private struct WeeklyEngagementChart: View {
             HStack(alignment: .bottom, spacing: 0) {
                 ForEach(days) { day in
                     VStack(spacing: 0) {
-                        Text(day.hoursLabel)
+                        Text(day.minuteLabel)
                             .font(AppTypography.progressChartValue)
                             .foregroundStyle(ProgressPalette.textPrimary)
                             .padding(.bottom, 4)
 
                         Rectangle()
-                            .fill(ProgressPalette.barFill)
+                            .fill(day.isHighlighted ? ProgressPalette.brand : ProgressPalette.barFill)
                             .frame(width: 30, height: day.barHeight)
 
                         Text(day.shortLabel)
@@ -143,7 +199,6 @@ private struct WeeklyEngagementChart: View {
             Rectangle()
                 .fill(ProgressPalette.cardBorder)
                 .frame(height: 1)
-                .padding(.top, 0)
         }
     }
 }
@@ -193,23 +248,29 @@ private struct SubjectMasteryRow: View {
                                     .foregroundStyle(iconForeground)
                             }
 
-                        VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(mastery.title)
                                 .font(AppTypography.progressMasteryTitle)
                                 .foregroundStyle(ProgressPalette.textPrimary)
 
-                            Text(mastery.unitTitle)
+                            Text(mastery.subtitle)
                                 .font(AppTypography.progressMasterySubtitle)
-                                .tracking(0.45)
-                                .foregroundStyle(ProgressPalette.textSecondary.opacity(0.5))
+                                .tracking(0.2)
+                                .foregroundStyle(ProgressPalette.textSecondary.opacity(0.7))
                         }
                     }
 
                     Spacer(minLength: 12)
 
-                    Text(mastery.progressText)
-                        .font(AppTypography.progressMasteryValue)
-                        .foregroundStyle(valueColor)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(mastery.progressText)
+                            .font(AppTypography.progressMasteryValue)
+                            .foregroundStyle(valueColor)
+
+                        Text("MASTERY \(mastery.masteryText)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(ProgressPalette.textSecondary.opacity(0.6))
+                    }
                 }
 
                 ProgressFillBar(progress: mastery.progress, fill: barFill)

@@ -1,9 +1,15 @@
 import Foundation
 
+@MainActor
 final class ProfileViewModel: ObservableObject {
-    @Published var settings: ProfileSettings
+    @Published private(set) var isLoading = false
+    @Published private(set) var errorMessage = ""
 
-    init(settings: ProfileSettings = .init()) {
-        self.settings = settings
+    func setLoading(_ isLoading: Bool) {
+        self.isLoading = isLoading
+    }
+
+    func setErrorMessage(_ message: String) {
+        errorMessage = message
     }
 }

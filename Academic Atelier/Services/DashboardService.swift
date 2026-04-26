@@ -22,4 +22,20 @@ struct DashboardService {
             requiresAuth: true
         )
     }
+
+    func getProgress() async throws -> DashboardProgressPayload {
+        try await client.send(
+            path: "/dashboard/progress",
+            method: "GET",
+            requiresAuth: true
+        )
+    }
+
+    func getRecommendations() async throws -> DashboardRecommendationsPayload {
+        try await client.send(
+            path: "/dashboard/recommendations",
+            method: "GET",
+            requiresAuth: true
+        )
+    }
 }

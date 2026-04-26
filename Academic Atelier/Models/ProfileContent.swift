@@ -3,6 +3,7 @@ import Foundation
 struct ProfileContent {
     struct IdentityItem: Identifiable, Hashable {
         enum Kind: Hashable {
+            case emailAddress
             case subjectStream
             case registrationNumber
         }
@@ -30,6 +31,11 @@ struct ProfileContent {
             streamTitle: selectedStream?.profileDisplayTitle ?? (hasSelectedStream ? "Selected Stream" : "Pending Stream Selection"),
             academicSectionTitle: "Academic Identity",
             identityItems: [
+                .init(
+                    id: .emailAddress,
+                    title: "Email Address",
+                    detail: user?.email ?? "Not available"
+                ),
                 .init(
                     id: .subjectStream,
                     title: "Subject Stream",

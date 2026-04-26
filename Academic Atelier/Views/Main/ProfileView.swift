@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @EnvironmentObject var session: SessionViewModel
+    @EnvironmentObject private var session: SessionViewModel
     @StateObject private var viewModel = ProfileViewModel()
     @State private var path: [ProfileRoute] = []
 
@@ -10,6 +10,7 @@ struct ProfileView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
                     topBar
+                    statusSection
                     profileHeader
                     academicIdentitySection
                     signOutButton
@@ -23,19 +24,15 @@ struct ProfileView: View {
             .navigationDestination(for: ProfileRoute.self) { route in
                 switch route {
                 case .settings:
-                    ProfileSettingsView(settings: $viewModel.settings)
+                    ProfileSettingsView()
                 }
             }
-        }
-        .onAppear {
-            viewModel.settings = session.profileSettings
-        }
-        .onChange(of: session.profileSettings) { _, newSettings in
-            guard newSettings != viewModel.settings else { return }
-            viewModel.settings = newSettings
-        }
-        .onChange(of: viewModel.settings) { _, newSettings in
-            session.updateProfileSettings(newSettings)
+            .task {
+                await refreshProfile(forceRefresh: session.currentUser != nil)
+            }
+            .refreshable {
+                await refreshProfile(forceRefresh: true)
+            }
         }
     }
 }
@@ -64,6 +61,36 @@ private extension ProfileView {
             .buttonStyle(.plain)
         }
         .frame(height: 40)
+    }
+
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && session.currentUser == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading profile...")
+                    .font(.footnote)
+                    .foregroundStyle(ProfilePalette.textSecondary)
+            }
+        } else if !viewModel.errorMessage.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await refreshProfile(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(ProfilePalette.blueIcon)
+            }
+        } else if viewModel.isLoading {
+            Text("Refreshing profile...")
+                .font(.footnote)
+                .foregroundStyle(ProfilePalette.textSecondary)
+        }
     }
 
     var profileHeader: some View {
@@ -125,6 +152,26 @@ private extension ProfileView {
         }
         .buttonStyle(.plain)
         .padding(.top, 20)
+    }
+
+    func refreshProfile(forceRefresh: Bool) async {
+        guard forceRefresh || session.currentUser == nil else { return }
+
+        viewModel.setLoading(true)
+        viewModel.setErrorMessage("")
+        defer { viewModel.setLoading(false) }
+
+        do {
+            _ = try await session.refreshProfile()
+        } catch let error as APIError {
+            if error.requiresSignOut {
+                session.signOut()
+            } else {
+                viewModel.setErrorMessage(error.localizedDescription)
+            }
+        } catch {
+            viewModel.setErrorMessage(error.localizedDescription)
+        }
     }
 }
 
@@ -197,10 +244,23 @@ private struct ProfileIdentityRow: View {
 
     private var iconName: String {
         switch item.id {
+        case .emailAddress:
+            return "envelope.fill"
         case .subjectStream:
             return "graduationcap.fill"
         case .registrationNumber:
             return "person.text.rectangle.fill"
+        }
+    }
+}
+
+private extension APIError {
+    var requiresSignOut: Bool {
+        switch self {
+        case .missingToken, .unauthorized:
+            return true
+        default:
+            return false
         }
     }
 }

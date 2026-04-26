@@ -1,14 +1,19 @@
 import SwiftUI
 
 struct RecommendationsView: View {
-    private let content: RecommendationsContent
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
+
+    @StateObject private var viewModel = RecommendationsViewModel()
+
+    private let preferredSubject: ProgressTabContent.SubjectMastery?
     private let actions: RecommendationsActions
 
     init(
-        content: RecommendationsContent,
+        preferredSubject: ProgressTabContent.SubjectMastery? = nil,
         actions: RecommendationsActions = .init()
     ) {
-        self.content = content
+        self.preferredSubject = preferredSubject
         self.actions = actions
     }
 
@@ -16,8 +21,10 @@ struct RecommendationsView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 heroSection
+                statusSection
+                    .padding(.top, 20)
                 pathwaysSection
-                    .padding(.top, 56)
+                    .padding(.top, 40)
             }
             .padding(.horizontal, 24)
             .padding(.top, 30)
@@ -25,66 +32,99 @@ struct RecommendationsView: View {
         }
         .background(ProgressPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: refreshCenter.recommendationsToken) {
+            await load(forceRefresh: viewModel.content != nil)
+        }
+        .refreshable {
+            await load(forceRefresh: true)
+        }
     }
 }
 
 private extension RecommendationsView {
+    @ViewBuilder
     var heroSection: some View {
+        let content = viewModel.content
+
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 10.8) {
-                Text(content.eyebrow.uppercased())
+                Text((content?.eyebrow ?? "Performance Analysis").uppercased())
                     .font(AppTypography.progressRecommendationsEyebrow)
                     .tracking(2.2)
                     .foregroundStyle(ProgressPalette.sectionLabel)
 
-                Text(content.title)
+                Text(content?.title ?? "Study\nRecommendations")
                     .font(AppTypography.progressRecommendationsTitle)
                     .tracking(-0.9)
                     .foregroundStyle(ProgressPalette.textPrimary)
 
-                summaryText
+                Text(content?.summary ?? "Complete a quiz to receive personalized study recommendations.")
                     .font(AppTypography.progressRecommendationsSummary)
                     .foregroundStyle(ProgressPalette.textSecondary)
                     .lineSpacing(8)
                     .padding(.top, 13.2)
             }
 
-            overallProficiencyCard
+            if let overview = content?.overview {
+                overviewCard(overview)
+            }
         }
     }
 
-    var summaryText: Text {
-        content.summarySegments.reduce(Text("")) { partial, segment in
-            partial + Text(segment.text)
-                .font(segment.isEmphasized ? AppTypography.progressRecommendationsSummaryEmphasis : AppTypography.progressRecommendationsSummary)
-                .foregroundStyle(segment.isEmphasized ? ProgressPalette.brand : ProgressPalette.textSecondary)
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading recommendations...")
+                    .font(.footnote)
+                    .foregroundStyle(ProgressPalette.textSecondary)
+            }
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await load(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(ProgressPalette.brand)
+            }
+        } else if viewModel.isLoading {
+            Text("Refreshing recommendations...")
+                .font(.footnote)
+                .foregroundStyle(ProgressPalette.textSecondary)
         }
     }
 
-    var overallProficiencyCard: some View {
+    func overviewCard(_ overview: RecommendationsContent.Overview) -> some View {
         HStack(spacing: 24) {
             ZStack {
                 Circle()
                     .stroke(ProgressPalette.cardBorder, lineWidth: 6)
 
                 Circle()
-                    .trim(from: 0, to: content.overallProficiency.scoreValue)
+                    .trim(from: 0, to: overview.scoreValue)
                     .stroke(ProgressPalette.brand, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
 
-                Text(content.overallProficiency.scoreText)
+                Text(overview.scoreText)
                     .font(AppTypography.progressRecommendationsScoreValue)
                     .foregroundStyle(ProgressPalette.textPrimary)
             }
             .frame(width: 80, height: 80)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(content.overallProficiency.title.uppercased())
+                Text(overview.title.uppercased())
                     .font(AppTypography.progressRecommendationsScoreLabel)
                     .tracking(1.0)
                     .foregroundStyle(ProgressPalette.sectionLabel)
 
-                Text(content.overallProficiency.message)
+                Text(overview.message)
                     .font(AppTypography.progressRecommendationsCardBody)
                     .foregroundStyle(ProgressPalette.textSecondary)
                     .lineSpacing(5)
@@ -104,29 +144,59 @@ private extension RecommendationsView {
         .shadow(color: ProgressPalette.shadow, radius: 2, y: 1)
     }
 
+    @ViewBuilder
     var pathwaysSection: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .lastTextBaseline) {
-                Text(content.sectionTitle)
-                    .font(AppTypography.progressRecommendationsSectionTitle)
-                    .tracking(-0.5)
-                    .foregroundStyle(ProgressPalette.textPrimary)
+        if let content = viewModel.content {
+            VStack(alignment: .leading, spacing: 24) {
+                HStack(alignment: .lastTextBaseline) {
+                    Text(content.sectionTitle)
+                        .font(AppTypography.progressRecommendationsSectionTitle)
+                        .tracking(-0.5)
+                        .foregroundStyle(ProgressPalette.textPrimary)
 
-                Spacer(minLength: 12)
+                    Spacer(minLength: 12)
 
-                Text(content.sectionActionTitle.uppercased())
-                    .font(AppTypography.progressRecommendationsSectionAction)
-                    .tracking(0.9)
-                    .foregroundStyle(ProgressPalette.brand.opacity(0.4))
-            }
+                    Text(content.sectionActionTitle.uppercased())
+                        .font(AppTypography.progressRecommendationsSectionAction)
+                        .tracking(0.9)
+                        .foregroundStyle(ProgressPalette.brand.opacity(0.4))
+                }
 
-            VStack(spacing: 16) {
-                ForEach(content.pathways) { pathway in
-                    RecommendationPathwayCard(pathway: pathway) {
-                        actions.onTapStartRevision(pathway)
+                if content.pathways.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(content.emptyStateTitle)
+                            .font(AppTypography.progressRecommendationsSectionTitle)
+                            .foregroundStyle(ProgressPalette.textPrimary)
+
+                        Text(content.emptyStateMessage)
+                            .font(AppTypography.progressRecommendationsPathwayBody)
+                            .foregroundStyle(ProgressPalette.textSecondary)
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(ProgressPalette.secondaryRecommendationsCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                } else {
+                    VStack(spacing: 16) {
+                        ForEach(content.pathways) { pathway in
+                            RecommendationPathwayCard(pathway: pathway) {
+                                actions.onTapStartRevision(pathway)
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+
+    func load(forceRefresh: Bool = false) async {
+        await viewModel.load(
+            preferredSubject: preferredSubject,
+            forceRefresh: forceRefresh
+        )
+
+        if viewModel.requiresSignOut {
+            session.signOut()
         }
     }
 }
@@ -145,26 +215,26 @@ private struct RecommendationPathwayCard: View {
                 priorityPill
 
                 Text(pathway.title)
-                    .font(titleFont)
-                    .tracking(titleTracking)
+                    .font(pathway.priority == .critical ? AppTypography.progressRecommendationsPathwayTitleCritical : AppTypography.progressRecommendationsPathwayTitle)
                     .foregroundStyle(ProgressPalette.textPrimary)
-                    .padding(.top, titleTopPadding)
+                    .padding(.top, pathway.priority == .critical ? 15.5 : 24)
+
+                Text(pathway.subjectLine.uppercased())
+                    .font(AppTypography.progressRecommendationsSecondaryEyebrow)
+                    .tracking(1.1)
+                    .foregroundStyle(ProgressPalette.brand.opacity(0.6))
+                    .padding(.top, 8)
 
                 Text(pathway.summary)
                     .font(AppTypography.progressRecommendationsPathwayBody)
                     .foregroundStyle(ProgressPalette.textSecondary)
                     .lineSpacing(7)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, bodyTopPadding)
-
-                if let curriculumProgress = pathway.curriculumProgress {
-                    curriculumProgressView(curriculumProgress)
-                        .padding(.top, 24)
-                }
+                    .padding(.top, 10)
             }
 
-            if let title = pathway.primaryActionTitle {
-                HStack {
+            HStack {
+                if let title = pathway.primaryActionTitle {
                     Button(action: onTapPrimary) {
                         Text(title)
                             .font(AppTypography.progressRecommendationsPrimaryButton)
@@ -174,9 +244,11 @@ private struct RecommendationPathwayCard: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                }
 
-                    Spacer(minLength: 12)
+                Spacer(minLength: 12)
 
+                VStack(alignment: .trailing, spacing: 6) {
                     if let durationText = pathway.durationText {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
@@ -187,16 +259,19 @@ private struct RecommendationPathwayCard: View {
                         }
                         .foregroundStyle(ProgressPalette.textSecondary.opacity(0.6))
                     }
-                }
-            }
 
-            if let reviewHistoryTitle = pathway.reviewHistoryTitle, !pathway.reviewHistory.isEmpty {
-                reviewHistoryView(title: reviewHistoryTitle, items: pathway.reviewHistory)
+                    if let scoreText = pathway.scoreText {
+                        Text(scoreText.uppercased())
+                            .font(AppTypography.progressRecommendationsHistoryMeta)
+                            .tracking(0.8)
+                            .foregroundStyle(ProgressPalette.textSecondary.opacity(0.5))
+                    }
+                }
             }
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(backgroundColor)
+        .background(pathway.priority == .critical ? ProgressPalette.recommendationsCard : ProgressPalette.secondaryRecommendationsCard)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -218,93 +293,5 @@ private struct RecommendationPathwayCard: View {
                     .foregroundStyle(ProgressPalette.textSecondary.opacity(0.4))
             }
         }
-    }
-
-    private func curriculumProgressView(_ progress: RecommendationsContent.CurriculumProgress) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(progress.label.uppercased())
-                    .font(AppTypography.progressRecommendationsProgressLabel)
-                    .tracking(0.9)
-                    .foregroundStyle(ProgressPalette.textSecondary.opacity(0.5))
-
-                Spacer(minLength: 12)
-
-                Text(progress.valueText.uppercased())
-                    .font(AppTypography.progressRecommendationsProgressLabel)
-                    .tracking(0.9)
-                    .foregroundStyle(ProgressPalette.textSecondary.opacity(0.5))
-            }
-
-            ProgressFillBar(progress: progress.progress, fill: ProgressPalette.brand.opacity(0.6))
-        }
-    }
-
-    private func reviewHistoryView(title: String, items: [RecommendationsContent.ReviewHistoryItem]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased())
-                .font(AppTypography.progressRecommendationsNestedTitle)
-                .tracking(0.9)
-                .foregroundStyle(ProgressPalette.textSecondary.opacity(0.4))
-
-            VStack(spacing: 12) {
-                ForEach(items) { item in
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(ProgressPalette.brand.opacity(0.05))
-                            .frame(width: 32, height: 32)
-                            .overlay {
-                                Image(systemName: item.iconName)
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(ProgressPalette.brand)
-                            }
-
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(item.title)
-                                .font(AppTypography.progressRecommendationsHistoryTitle)
-                                .foregroundStyle(ProgressPalette.textPrimary)
-
-                            Text(item.timeAgoText)
-                                .font(AppTypography.progressRecommendationsHistoryMeta)
-                                .tracking(0.8)
-                                .foregroundStyle(ProgressPalette.textSecondary.opacity(0.5))
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .background(ProgressPalette.nestedSurface)
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(ProgressPalette.cardBorder.opacity(0.4), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private var titleFont: Font {
-        pathway.priority == .critical
-            ? AppTypography.progressRecommendationsPathwayTitleCritical
-            : AppTypography.progressRecommendationsPathwayTitle
-    }
-
-    private var titleTracking: CGFloat {
-        pathway.priority == .critical ? 0 : 0
-    }
-
-    private var titleTopPadding: CGFloat {
-        pathway.priority == .critical ? 15.5 : 29.5
-    }
-
-    private var bodyTopPadding: CGFloat {
-        pathway.priority == .critical ? 6.75 : 6.375
-    }
-
-    private var backgroundColor: Color {
-        pathway.priority == .critical
-            ? ProgressPalette.recommendationsCard
-            : ProgressPalette.secondaryRecommendationsCard
     }
 }

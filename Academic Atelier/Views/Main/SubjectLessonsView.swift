@@ -255,6 +255,7 @@ private extension SubjectLessonsView {
                 return
             }
 
+            refreshCenter.didOpenLesson()
             actions.onOpenQuiz(quizContent)
         }
     }

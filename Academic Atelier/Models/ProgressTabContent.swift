@@ -3,73 +3,73 @@ import Foundation
 struct ProgressTabContent: Hashable {
     var title: String
     var subtitle: String
+    var emptyStateMessage: String
     var weeklyEngagement: WeeklyEngagement
     var subjectMasteryTitle: String
     var subjectMasterySubtitle: String
     var subjectMasteries: [SubjectMastery]
-    var featuredRecommendations: [String: RecommendationsContent]
 
-    static let placeholder = ProgressTabContent(
-        title: "Revision Insights",
-        subtitle: "Quantifying your academic\nperformance over the last 7 days.",
-        weeklyEngagement: .init(
-            eyebrow: "Activity Tracking",
-            title: "Weekly Engagement",
-            days: [
-                .init(id: "mon", shortLabel: "MON", hoursLabel: "3.0 H", hours: 3.0, barHeight: 40),
-                .init(id: "tue", shortLabel: "TUE", hoursLabel: "4.5 H", hours: 4.5, barHeight: 60),
-                .init(id: "wed", shortLabel: "WED", hoursLabel: "7.0 H", hours: 7.0, barHeight: 139, isHighlighted: true),
-                .init(id: "thu", shortLabel: "THU", hoursLabel: "3.5 H", hours: 3.5, barHeight: 45),
-                .init(id: "fri", shortLabel: "FRI", hoursLabel: "4.0 H", hours: 4.0, barHeight: 50),
-                .init(id: "sat", shortLabel: "SAT", hoursLabel: "1.5 H", hours: 1.5, barHeight: 25),
-                .init(id: "sun", shortLabel: "SUN", hoursLabel: "1.0 H", hours: 1.0, barHeight: 20)
-            ],
-            statCards: [
-                .init(id: "focus-time", iconName: "timer", title: "Focus Time", valueText: "24.5h"),
-                .init(id: "chapters", iconName: "book.closed", title: "Chapters", valueText: "18/42")
-            ]
-        ),
-        subjectMasteryTitle: "Subject Mastery",
-        subjectMasterySubtitle: "Real-time curriculum tracking",
-        subjectMasteries: [
-            .init(
-                id: "physics",
-                title: "Physics",
-                unitTitle: "UNIT 4: MECHANICS",
-                progress: 0.78,
-                progressText: "78%",
-                iconName: "atom",
-                accentStyle: .brand,
-                recommendationsID: "focus-foundations"
-            ),
-            .init(
-                id: "chemistry",
-                title: "Chemistry",
-                unitTitle: "ORGANIC TRANSITIONS",
-                progress: 0.42,
-                progressText: "42%",
-                iconName: "flask",
-                accentStyle: .muted,
-                recommendationsID: "focus-foundations"
-            ),
-            .init(
-                id: "biology",
-                title: "Biology",
-                unitTitle: "GENETICS & EVOLUTION",
-                progress: 0.92,
-                progressText: "92%",
-                iconName: "microscope",
-                accentStyle: .brand,
-                recommendationsID: "focus-foundations"
-            )
-        ],
-        featuredRecommendations: [
-            "focus-foundations": .placeholder
-        ]
-    )
+    static func build(
+        progress: DashboardProgressPayload,
+        subjects: [APISubject]
+    ) -> ProgressTabContent {
+        let subjectMap = Dictionary(uniqueKeysWithValues: subjects.map { ($0.id, $0) })
+        let mergedMasteries = mergeSubjectMastery(
+            progress.subjectMastery,
+            with: subjects
+        )
 
-    func recommendationsContent(for subjectMastery: SubjectMastery) -> RecommendationsContent? {
-        featuredRecommendations[subjectMastery.recommendationsID]
+        return ProgressTabContent(
+            title: "Revision Insights",
+            subtitle: "Track your weekly focus time and lesson completion across every subject in your stream.",
+            emptyStateMessage: "Start a lesson and complete a quiz to see your progress.",
+            weeklyEngagement: .init(
+                eyebrow: "Activity Tracking",
+                title: "Weekly Engagement",
+                days: progress.weeklyEngagement.map { day in
+                    WeeklyDay(
+                        id: day.day.lowercased(),
+                        shortLabel: day.day.uppercased(),
+                        minuteLabel: "\(max(day.minutes, 0))m",
+                        minutes: max(day.minutes, 0),
+                        barHeight: barHeight(for: day.minutes, maxMinutes: progress.weeklyEngagement.map(\.minutes).max() ?? 0),
+                        isHighlighted: day.minutes == progress.weeklyEngagement.map(\.minutes).max() && day.minutes > 0
+                    )
+                },
+                statCards: [
+                    .init(
+                        id: "focus-time",
+                        iconName: "timer",
+                        title: "Focus Time",
+                        valueText: durationText(minutes: progress.focusTimeMinutes)
+                    ),
+                    .init(
+                        id: "chapters",
+                        iconName: "book.closed",
+                        title: "Lessons Completed",
+                        valueText: "\(max(progress.chaptersCompleted, 0))"
+                    )
+                ]
+            ),
+            subjectMasteryTitle: "Subject Mastery",
+            subjectMasterySubtitle: "Quiz mastery and lesson progress for your current stream",
+            subjectMasteries: mergedMasteries.map { mastery in
+                SubjectMastery(
+                    subjectID: mastery.subjectId,
+                    title: mastery.subjectName,
+                    subtitle: masterySubtitle(
+                        masteryPercent: mastery.masteryPercent,
+                        progressPercent: mastery.progressPercent
+                    ),
+                    masteryPercent: clampedPercent(mastery.masteryPercent),
+                    masteryText: "\(clampedPercent(mastery.masteryPercent))%",
+                    progress: Double(clampedPercent(mastery.progressPercent)) / 100.0,
+                    progressText: "\(clampedPercent(mastery.progressPercent))%",
+                    iconName: iconName(for: subjectMap[mastery.subjectId]?.icon, subjectName: mastery.subjectName),
+                    accentStyle: clampedPercent(mastery.masteryPercent) >= 60 ? .brand : .muted
+                )
+            }
+        )
     }
 }
 
@@ -84,8 +84,8 @@ extension ProgressTabContent {
     struct WeeklyDay: Identifiable, Hashable {
         var id: String
         var shortLabel: String
-        var hoursLabel: String
-        var hours: Double
+        var minuteLabel: String
+        var minutes: Int
         var barHeight: Double
         var isHighlighted: Bool = false
     }
@@ -103,13 +103,100 @@ extension ProgressTabContent {
             case muted
         }
 
-        var id: String
+        var id: Int { subjectID }
+        var subjectID: Int
         var title: String
-        var unitTitle: String
+        var subtitle: String
+        var masteryPercent: Int
+        var masteryText: String
         var progress: Double
         var progressText: String
         var iconName: String
         var accentStyle: AccentStyle
-        var recommendationsID: String
+    }
+}
+
+private extension ProgressTabContent {
+    static func mergeSubjectMastery(
+        _ masteryRows: [DashboardSubjectMastery],
+        with subjects: [APISubject]
+    ) -> [DashboardSubjectMastery] {
+        var merged = masteryRows
+        let existingIDs = Set(masteryRows.map(\.subjectId))
+
+        let missing = subjects
+            .sorted { $0.orderIndex < $1.orderIndex }
+            .filter { !existingIDs.contains($0.id) }
+            .map {
+                DashboardSubjectMastery(
+                    subjectId: $0.id,
+                    subjectName: $0.displayName,
+                    masteryPercent: 0,
+                    progressPercent: 0
+                )
+            }
+
+        merged.append(contentsOf: missing)
+        return merged
+    }
+
+    static func masterySubtitle(
+        masteryPercent: Int,
+        progressPercent: Int
+    ) -> String {
+        "Quiz mastery \(clampedPercent(masteryPercent))% • Lesson progress \(clampedPercent(progressPercent))%"
+    }
+
+    static func durationText(minutes: Int) -> String {
+        let safeMinutes = max(minutes, 0)
+        if safeMinutes >= 60 {
+            let hours = safeMinutes / 60
+            let remainder = safeMinutes % 60
+            if remainder == 0 {
+                return "\(hours)h"
+            }
+            return "\(hours)h \(remainder)m"
+        }
+        return "\(safeMinutes)m"
+    }
+
+    static func barHeight(for minutes: Int, maxMinutes: Int) -> Double {
+        let safeMinutes = max(minutes, 0)
+        let safeMax = max(maxMinutes, 0)
+        guard safeMax > 0 else { return 16 }
+        let normalized = Double(safeMinutes) / Double(safeMax)
+        return max(16, normalized * 120)
+    }
+
+    static func clampedPercent(_ value: Int) -> Int {
+        min(max(value, 0), 100)
+    }
+
+    static func iconName(for backendIcon: String?, subjectName: String) -> String {
+        switch backendIcon?.lowercased() {
+        case "flask":
+            return "flask.fill"
+        case "atom":
+            return "atom"
+        case "bolt":
+            return "bolt.fill"
+        case "leaf":
+            return "leaf.fill"
+        case "function":
+            return "function"
+        default:
+            switch subjectName.lowercased() {
+            case let name where name.contains("chem"):
+                return "flask.fill"
+            case let name where name.contains("phys"):
+                return "atom"
+            case let name where name.contains("bio"):
+                return "leaf.fill"
+            case let name where name.contains("math"):
+                return "function"
+            default:
+                return "book.closed.fill"
+            }
+        }
     }
 }

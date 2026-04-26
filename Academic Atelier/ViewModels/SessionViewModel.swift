@@ -15,17 +15,20 @@ final class SessionViewModel: ObservableObject {
     private let tokenStore: KeychainService
     private let authService: AuthService
     private let streamService: StreamService
+    private let profileService: ProfileService
 
     init(
         storage: LocalStorageService = .shared,
         tokenStore: KeychainService = .shared,
         authService: AuthService = AuthService(),
-        streamService: StreamService = StreamService()
+        streamService: StreamService = StreamService(),
+        profileService: ProfileService = ProfileService()
     ) {
         self.storage = storage
         self.tokenStore = tokenStore
         self.authService = authService
         self.streamService = streamService
+        self.profileService = profileService
         currentUser = storage.loadUser()
         profileSettings = storage.loadProfileSettings()
         updateRoute(for: currentUser)
@@ -136,6 +139,31 @@ final class SessionViewModel: ObservableObject {
         storage.saveProfileSettings(settings)
     }
 
+    func refreshProfile() async throws -> User {
+        let payload = try await profileService.getProfile()
+        let hydratedUser = try await hydrateSelectedStreamIfNeeded(for: payload.user)
+        applyAuthenticatedUser(hydratedUser)
+        return hydratedUser
+    }
+
+    func refreshPreferences() async throws -> ProfileSettings {
+        let payload = try await profileService.getPreferences()
+        applyPreferences(payload.preferences)
+        return payload.preferences
+    }
+
+    func savePreferences(
+        localNotificationsEnabled: Bool? = nil,
+        biometricEnabled: Bool? = nil
+    ) async throws -> ProfileSettings {
+        let payload = try await profileService.updatePreferences(
+            localNotificationsEnabled: localNotificationsEnabled,
+            biometricEnabled: biometricEnabled
+        )
+        applyPreferences(payload.preferences)
+        return payload.preferences
+    }
+
     private func establishAuthenticatedSession(with payload: AuthPayload) async throws {
         try tokenStore.saveToken(payload.token)
         applyAuthenticatedUser(payload.user)
@@ -219,6 +247,17 @@ final class SessionViewModel: ObservableObject {
         }
 
         updateRoute(for: user)
+    }
+
+    private func applyPreferences(_ preferences: ProfileSettings) {
+        profileSettings = preferences
+        storage.saveProfileSettings(preferences)
+
+        if var user = currentUser {
+            user.preference = preferences
+            currentUser = user
+            storage.saveUser(user)
+        }
     }
 
     private func clearStoredSession() {

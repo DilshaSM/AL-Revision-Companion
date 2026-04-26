@@ -63,7 +63,7 @@ struct AuthService {
 
     func currentUser() async throws -> CurrentUserPayload {
         try await client.send(
-            path: "/auth/me",
+            path: "/users/me",
             method: "GET",
             requiresAuth: true
         )

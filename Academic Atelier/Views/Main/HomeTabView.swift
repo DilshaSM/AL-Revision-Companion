@@ -61,8 +61,8 @@ struct HomeTabView: View {
                             onTapSubjectMastery: handleProgressSubjectTap
                         )
                     )
-                case let .progressRecommendations(content):
-                    RecommendationsView(content: content)
+                case let .progressRecommendations(subject):
+                    RecommendationsView(preferredSubject: subject)
                 }
             }
         }
@@ -84,8 +84,7 @@ struct HomeTabView: View {
     }
 
     private func handleProgressSubjectTap(_ subjectMastery: ProgressTabContent.SubjectMastery) {
-        guard let content = ProgressTabContent.placeholder.recommendationsContent(for: subjectMastery) else { return }
-        path.append(.progressRecommendations(content))
+        path.append(.progressRecommendations(subjectMastery))
     }
 
     private func handleStudyMaterialTap(_ subject: QuickRevisionSubject) {
@@ -149,5 +148,5 @@ private enum HomeTabRoute: Hashable {
     case topicSelection(QuickRevisionSubject)
     case topicContent(QuickRevisionSubject.Topic)
     case progressInsights
-    case progressRecommendations(RecommendationsContent)
+    case progressRecommendations(ProgressTabContent.SubjectMastery)
 }
