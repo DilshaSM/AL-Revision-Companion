@@ -23,11 +23,13 @@ struct SignInView: View {
                     forgotPasswordSection
                         .padding(.top, 26)
 
-                    quickAccessSection
-                        .padding(.top, 32)
+                    if session.canUseBiometricQuickLogin {
+                        quickAccessSection
+                            .padding(.top, 32)
+                    }
 
                     newStudentSection
-                        .padding(.top, 48)
+                        .padding(.top, session.canUseBiometricQuickLogin ? 48 : 32)
                         .padding(.bottom, 40)
                 }
                 .padding(.horizontal, 24)
@@ -116,7 +118,9 @@ private extension SignInView {
                 .foregroundStyle(Color(.systemGray))
 
             Button {
-                // Face ID wiring can be added later
+                Task {
+                    await session.signInWithBiometrics()
+                }
             } label: {
                 HStack(spacing: 18) {
                     ZStack {
@@ -124,18 +128,23 @@ private extension SignInView {
                             .fill(AppColors.primary.opacity(0.10))
                             .frame(width: 60, height: 60)
 
-                        Image(systemName: "faceid")
-                            .frame(width: 30, height: 30)
-                            .font(.system(size: 30, weight: .regular))
-                            .foregroundStyle(AppColors.primary)
+                        if session.isAuthenticatingWithBiometrics {
+                            ProgressView()
+                                .tint(AppColors.primary)
+                        } else {
+                            Image(systemName: session.biometricType.iconSystemName)
+                                .frame(width: 30, height: 30)
+                                .font(.system(size: 30, weight: .regular))
+                                .foregroundStyle(AppColors.primary)
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Face ID Login")
+                        Text(session.biometricButtonTitle)
                             .font(AppTypography.authFeatureTitle)
                             .foregroundStyle(.primary)
 
-                        Text("Use biometric authentication for faster access")
+                        Text(session.biometricButtonSubtitle)
                             .font(AppTypography.authFeatureCaption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.leading)
@@ -159,6 +168,14 @@ private extension SignInView {
                 )
             }
             .buttonStyle(.plain)
+            .disabled(session.isAuthenticatingWithBiometrics || viewModel.isLoading)
+
+            if !session.biometricErrorMessage.isEmpty {
+                Text(session.biometricErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 

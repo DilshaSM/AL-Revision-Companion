@@ -9,6 +9,9 @@ final class SessionViewModel: ObservableObject {
     @Published private(set) var isRestoringSession = true
     @Published private(set) var isLoadingStreams = false
     @Published private(set) var activeStreamSelectionID: Int?
+    @Published private(set) var isAuthenticatingWithBiometrics = false
+    @Published private(set) var biometricErrorMessage = ""
+    @Published private(set) var biometricType: BiometricType = .none
     @Published var streamErrorMessage: String = ""
 
     private let storage: LocalStorageService
@@ -16,21 +19,25 @@ final class SessionViewModel: ObservableObject {
     private let authService: AuthService
     private let streamService: StreamService
     private let profileService: ProfileService
+    private let biometricAuthService: BiometricAuthService
 
     init(
         storage: LocalStorageService = .shared,
         tokenStore: KeychainService = .shared,
         authService: AuthService = AuthService(),
         streamService: StreamService = StreamService(),
-        profileService: ProfileService = ProfileService()
+        profileService: ProfileService = ProfileService(),
+        biometricAuthService: BiometricAuthService = BiometricAuthService()
     ) {
         self.storage = storage
         self.tokenStore = tokenStore
         self.authService = authService
         self.streamService = streamService
         self.profileService = profileService
+        self.biometricAuthService = biometricAuthService
         currentUser = storage.loadUser()
         profileSettings = storage.loadProfileSettings()
+        biometricType = biometricAuthService.availableBiometricType()
         updateRoute(for: currentUser)
 
         Task { [weak self] in
@@ -38,30 +45,48 @@ final class SessionViewModel: ObservableObject {
         }
     }
 
+    var canUseBiometricQuickLogin: Bool {
+        profileSettings.isFaceIDEnabled && tokenStore.hasBiometricToken() && biometricType != .none
+    }
+
+    var biometricButtonTitle: String {
+        "\(biometricType.displayName) Login"
+    }
+
+    var biometricButtonSubtitle: String {
+        "Use \(biometricType.displayName) for faster access"
+    }
+
     func showSignIn() {
+        biometricErrorMessage = ""
         authRoute = .signIn
     }
 
     func showSignUp() {
+        biometricErrorMessage = ""
         authRoute = .signUp
     }
 
     func restoreSession() async {
         defer { isRestoringSession = false }
 
-        guard tokenStore.loadToken() != nil else {
+        guard tokenStore.loadToken() != nil || tokenStore.hasBiometricToken() else {
             clearStoredSession()
             return
         }
 
-        do {
-            let payload = try await authService.currentUser()
-            let hydratedUser = try await hydrateSelectedStreamIfNeeded(for: payload.user)
-            applyAuthenticatedUser(hydratedUser)
+        biometricType = biometricAuthService.availableBiometricType()
+        biometricErrorMessage = ""
 
-            if hydratedUser.streamId == nil {
-                await loadAvailableStreams()
-            }
+        do {
+            try await prepareAuthenticatedTokenForSessionRestore()
+        } catch {
+            lockSessionForManualSignIn(message: error.localizedDescription)
+            return
+        }
+
+        do {
+            try await resumeAuthenticatedSession()
         } catch let error as APIError {
             if error.requiresSignOut {
                 clearStoredSession()
@@ -82,12 +107,41 @@ final class SessionViewModel: ObservableObject {
         }
     }
 
+    func signInWithBiometrics() async {
+        guard canUseBiometricQuickLogin else {
+            biometricErrorMessage = "Enable biometric login in Settings before using quick access."
+            return
+        }
+
+        isAuthenticatingWithBiometrics = true
+        defer { isAuthenticatingWithBiometrics = false }
+
+        do {
+            biometricErrorMessage = ""
+            let token = try await unlockTokenWithBiometrics()
+            try tokenStore.saveToken(token)
+            try await resumeAuthenticatedSession()
+        } catch let error as APIError {
+            if error.requiresSignOut {
+                clearStoredSession()
+                return
+            }
+
+            biometricErrorMessage = error.localizedDescription
+        } catch {
+            biometricErrorMessage = error.localizedDescription
+            authRoute = .signIn
+        }
+    }
+
     func signIn(email: String, password: String) async throws {
+        biometricErrorMessage = ""
         let payload = try await authService.login(email: email, password: password)
         try await establishAuthenticatedSession(with: payload)
     }
 
     func signUp(fullName: String, email: String, password: String) async throws {
+        biometricErrorMessage = ""
         let payload = try await authService.register(fullName: fullName, email: email, password: password)
         try await establishAuthenticatedSession(with: payload)
     }
@@ -137,6 +191,7 @@ final class SessionViewModel: ObservableObject {
     func updateProfileSettings(_ settings: ProfileSettings) {
         profileSettings = settings
         storage.saveProfileSettings(settings)
+        biometricType = biometricAuthService.availableBiometricType()
     }
 
     func refreshProfile() async throws -> User {
@@ -156,17 +211,40 @@ final class SessionViewModel: ObservableObject {
         localNotificationsEnabled: Bool? = nil,
         biometricEnabled: Bool? = nil
     ) async throws -> ProfileSettings {
-        let payload = try await profileService.updatePreferences(
-            localNotificationsEnabled: localNotificationsEnabled,
-            biometricEnabled: biometricEnabled
-        )
-        applyPreferences(payload.preferences)
-        return payload.preferences
+        let hadBiometricToken = tokenStore.hasBiometricToken()
+
+        if biometricEnabled == true {
+            try tokenStore.saveBiometricToken(activeTokenForBiometricSetup())
+        }
+
+        do {
+            let payload = try await profileService.updatePreferences(
+                localNotificationsEnabled: localNotificationsEnabled,
+                biometricEnabled: biometricEnabled
+            )
+            applyPreferences(payload.preferences)
+
+            if payload.preferences.isFaceIDEnabled {
+                try? tokenStore.saveBiometricToken(activeTokenForBiometricSetup())
+            } else {
+                tokenStore.removeBiometricToken()
+            }
+
+            biometricType = biometricAuthService.availableBiometricType()
+            return payload.preferences
+        } catch {
+            if biometricEnabled == true && !hadBiometricToken {
+                tokenStore.removeBiometricToken()
+            }
+
+            throw error
+        }
     }
 
     private func establishAuthenticatedSession(with payload: AuthPayload) async throws {
         try tokenStore.saveToken(payload.token)
         applyAuthenticatedUser(payload.user)
+        synchronizeBiometricTokenWithCurrentPreferences()
 
         if payload.requiresStreamSelection || payload.user.streamId == nil {
             authRoute = .streamSelection
@@ -180,6 +258,7 @@ final class SessionViewModel: ObservableObject {
             let refreshedPayload = try await authService.currentUser()
             let hydratedUser = try await hydrateSelectedStreamIfNeeded(for: refreshedPayload.user)
             applyAuthenticatedUser(hydratedUser)
+            synchronizeBiometricTokenWithCurrentPreferences()
         } catch let error as APIError {
             if error.requiresSignOut {
                 clearStoredSession()
@@ -188,9 +267,38 @@ final class SessionViewModel: ObservableObject {
 
             let hydratedUser = try? await hydrateSelectedStreamIfNeeded(for: payload.user)
             applyAuthenticatedUser(hydratedUser ?? payload.user)
+            synchronizeBiometricTokenWithCurrentPreferences()
         } catch {
             let hydratedUser = try? await hydrateSelectedStreamIfNeeded(for: payload.user)
             applyAuthenticatedUser(hydratedUser ?? payload.user)
+            synchronizeBiometricTokenWithCurrentPreferences()
+        }
+    }
+
+    private func prepareAuthenticatedTokenForSessionRestore() async throws {
+        guard profileSettings.isFaceIDEnabled else {
+            guard tokenStore.loadToken() != nil else {
+                throw DeviceSessionError(message: "Your session expired. Sign in again.")
+            }
+            return
+        }
+
+        guard tokenStore.hasBiometricToken() else {
+            throw DeviceSessionError(message: "Biometric login needs to be set up again. Sign in with your password.")
+        }
+
+        let token = try await unlockTokenWithBiometrics()
+        try tokenStore.saveToken(token)
+    }
+
+    private func resumeAuthenticatedSession() async throws {
+        let payload = try await authService.currentUser()
+        let hydratedUser = try await hydrateSelectedStreamIfNeeded(for: payload.user)
+        applyAuthenticatedUser(hydratedUser)
+        synchronizeBiometricTokenWithCurrentPreferences()
+
+        if hydratedUser.streamId == nil {
+            await loadAvailableStreams()
         }
     }
 
@@ -252,6 +360,7 @@ final class SessionViewModel: ObservableObject {
     private func applyPreferences(_ preferences: ProfileSettings) {
         profileSettings = preferences
         storage.saveProfileSettings(preferences)
+        biometricType = biometricAuthService.availableBiometricType()
 
         if var user = currentUser {
             user.preference = preferences
@@ -260,12 +369,50 @@ final class SessionViewModel: ObservableObject {
         }
     }
 
+    private func activeTokenForBiometricSetup() throws -> String {
+        guard let token = tokenStore.loadToken(), !token.isEmpty else {
+            throw DeviceSessionError(message: "Sign in again before enabling biometric login.")
+        }
+
+        return token
+    }
+
+    private func unlockTokenWithBiometrics() async throws -> String {
+        let reason = "Unlock your account with \(biometricType.displayName)."
+        let context = try await biometricAuthService.authenticate(reason: reason)
+
+        guard let token = try tokenStore.loadBiometricToken(using: context), !token.isEmpty else {
+            throw DeviceSessionError(message: "Biometric login needs to be set up again. Sign in with your password.")
+        }
+
+        return token
+    }
+
+    private func synchronizeBiometricTokenWithCurrentPreferences() {
+        if profileSettings.isFaceIDEnabled {
+            guard let token = tokenStore.loadToken(), !token.isEmpty else { return }
+            try? tokenStore.saveBiometricToken(token)
+        } else {
+            tokenStore.removeBiometricToken()
+        }
+    }
+
+    private func lockSessionForManualSignIn(message: String) {
+        currentUser = nil
+        availableStreams = []
+        streamErrorMessage = ""
+        biometricErrorMessage = message
+        authRoute = .signIn
+    }
+
     private func clearStoredSession() {
         currentUser = nil
         availableStreams = []
         profileSettings = .init()
         streamErrorMessage = ""
+        biometricErrorMessage = ""
         tokenStore.removeToken()
+        tokenStore.removeBiometricToken()
         storage.clearAll()
         authRoute = .signIn
     }
@@ -289,4 +436,10 @@ private extension APIError {
             return false
         }
     }
+}
+
+private struct DeviceSessionError: LocalizedError {
+    let message: String
+
+    var errorDescription: String? { message }
 }

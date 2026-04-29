@@ -17,6 +17,7 @@ final class AuthViewModel: ObservableObject {
 
         isLoading = true
         errorMessage = ""
+        session.showSignIn()
 
         defer { isLoading = false }
 
@@ -48,6 +49,7 @@ final class AuthViewModel: ObservableObject {
 
         isLoading = true
         errorMessage = ""
+        session.showSignUp()
 
         defer { isLoading = false }
 

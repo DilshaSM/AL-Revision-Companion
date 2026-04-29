@@ -400,6 +400,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_API_BASE_URL = "http://192.168.8.104:5001/api";
 				INFOPLIST_KEY_CFBundleDisplayName = "A/L Revision Companion";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock your Academic Atelier session faster.";
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -432,6 +433,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_API_BASE_URL = "http://192.168.8.104:5001/api";
 				INFOPLIST_KEY_CFBundleDisplayName = "A/L Revision Companion";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock your Academic Atelier session faster.";
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
