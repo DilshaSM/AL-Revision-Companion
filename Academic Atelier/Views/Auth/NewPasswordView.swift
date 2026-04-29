@@ -3,8 +3,14 @@ import SwiftUI
 struct NewPasswordView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: PasswordResetViewModel
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let onCompleted: () -> Void
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(
         viewModel: PasswordResetViewModel,
@@ -31,6 +37,23 @@ struct NewPasswordView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: viewModel.infoMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -46,6 +69,7 @@ private extension NewPasswordView {
                     .foregroundStyle(AppColors.primary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             Spacer()
         }
@@ -57,6 +81,8 @@ private extension NewPasswordView {
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text("Set the new password for your account so you can login and access all features.")
                 .font(.system(size: 18, weight: .regular))
@@ -89,6 +115,7 @@ private extension NewPasswordView {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             if !viewModel.infoMessage.isEmpty {
@@ -96,6 +123,7 @@ private extension NewPasswordView {
                     .font(.footnote)
                     .foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             PrimaryButton(

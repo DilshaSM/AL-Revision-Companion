@@ -3,6 +3,7 @@ import SwiftUI
 struct VerificationView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: PasswordResetViewModel
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
     
     @State private var codeDigits: [String] = ["", "", "", ""]
     @State private var currentTime: Date = Date()
@@ -10,6 +11,11 @@ struct VerificationView: View {
 
     private let onCompleted: () -> Void
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(
         viewModel: PasswordResetViewModel,
@@ -50,6 +56,27 @@ struct VerificationView: View {
         }
         .onAppear {
             syncDigitsFromViewModel()
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: viewModel.infoMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: timeRemaining) { oldValue, newValue in
+            guard oldValue > 0, newValue == 0 else { return }
+            Task { @MainActor in
+                AccessibilitySupport.announce("Verification code expired.")
+            }
         }
     }
 }
@@ -66,6 +93,7 @@ private extension VerificationView {
                     .foregroundStyle(AppColors.primary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             Spacer()
         }
@@ -77,6 +105,8 @@ private extension VerificationView {
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text("Enter your 4 digits code that you received on your email.")
                 .font(.system(size: 18, weight: .regular))
@@ -104,6 +134,8 @@ private extension VerificationView {
                             .stroke(Color.gray.opacity(0.45), lineWidth: 1.5)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .accessibilityLabel("Verification code digit \(index + 1) of 4")
+                    .accessibilityValue(codeDigits[index].isEmpty ? "Empty" : codeDigits[index])
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -117,6 +149,7 @@ private extension VerificationView {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             if !viewModel.infoMessage.isEmpty {
@@ -124,6 +157,7 @@ private extension VerificationView {
                     .font(.footnote)
                     .foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             PrimaryButton(
@@ -149,6 +183,7 @@ private extension VerificationView {
             .foregroundStyle(timeRemaining > 0 ? .orange : .red)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 28)
+            .accessibilityLabel(timeRemaining > 0 ? "Time remaining \(timerLabel)" : "Code expired")
     }
 
     var resendSection: some View {
@@ -165,6 +200,7 @@ private extension VerificationView {
                 }
             }
             .foregroundStyle(.orange)
+            .accessibilityHint("Request a new verification code.")
         }
         .font(.system(size: 16, weight: .regular))
         .frame(maxWidth: .infinity, alignment: .center)

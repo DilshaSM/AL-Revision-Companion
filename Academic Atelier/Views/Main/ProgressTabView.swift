@@ -6,8 +6,14 @@ struct ProgressTabView: View {
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
     @StateObject private var viewModel = ProgressTabViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let actions: ProgressTabActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(actions: ProgressTabActions = .init()) {
         self.actions = actions
@@ -42,6 +48,16 @@ struct ProgressTabView: View {
         .refreshable {
             await load(forceRefresh: true)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -52,6 +68,8 @@ private extension ProgressTabView {
                 .font(AppTypography.progressTitle)
                 .tracking(-0.75)
                 .foregroundStyle(ProgressPalette.textPrimary)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text(viewModel.content?.subtitle ?? "Track your weekly study progress.")
                 .font(AppTypography.progressSubtitle)
@@ -75,6 +93,7 @@ private extension ProgressTabView {
                 Text(viewModel.errorMessage)
                     .font(.footnote)
                     .foregroundStyle(SubjectsPalette.resultIncorrect)
+                    .accessibilityFocused($focusedElement, equals: .status)
 
                 Button("Retry") {
                     Task {
@@ -130,6 +149,7 @@ private extension ProgressTabView {
                     .font(AppTypography.progressSectionTitle)
                     .tracking(-0.6)
                     .foregroundStyle(ProgressPalette.textPrimary)
+                    .accessibilityHeader()
 
                 Text(content.subjectMasterySubtitle)
                     .font(AppTypography.progressSectionSubtitle)
@@ -200,6 +220,9 @@ private struct WeeklyEngagementChart: View {
                 .fill(ProgressPalette.cardBorder)
                 .frame(height: 1)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Weekly engagement chart")
+        .accessibilityValue(days.map { "\($0.shortLabel) \($0.minuteLabel)" }.joined(separator: ", "))
     }
 }
 
@@ -227,6 +250,9 @@ private struct WeeklyStatCard: View {
         .frame(maxWidth: .infinity, minHeight: 91, alignment: .leading)
         .background(ProgressPalette.mutedSurface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(card.title)
+        .accessibilityValue(card.valueText)
     }
 }
 
@@ -281,6 +307,10 @@ private struct SubjectMasteryRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(mastery.title)
+        .accessibilityValue("\(mastery.subtitle). \(mastery.progressText). Mastery \(mastery.masteryText)")
+        .accessibilityHint("Open recommendations for this subject.")
     }
 
     private var iconBackground: Color {

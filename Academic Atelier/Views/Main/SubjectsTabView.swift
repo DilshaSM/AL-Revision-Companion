@@ -5,10 +5,16 @@ struct SubjectsTabView: View {
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
     @StateObject private var viewModel = SubjectsViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
     @State private var path: [SubjectsTabRoute] = []
     @State private var routeErrorMessage = ""
 
     private let subjectsService = SubjectsService()
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     private var content: SubjectsTabContent? {
         viewModel.content
@@ -110,6 +116,22 @@ struct SubjectsTabView: View {
                 Text(routeErrorMessage)
             }
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: routeErrorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -123,6 +145,8 @@ private extension SubjectsTabView {
                     .font(AppTypography.subjectsTopBarTitle)
                     .tracking(-0.5)
                     .foregroundStyle(SubjectsPalette.titleBlue)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Spacer(minLength: 0)
             }
@@ -151,6 +175,7 @@ private extension SubjectsTabView {
         .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
         .background(SubjectsPalette.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -167,6 +192,7 @@ private extension SubjectsTabView {
                 Text(viewModel.errorMessage)
                     .font(.footnote)
                     .foregroundStyle(SubjectsPalette.resultIncorrect)
+                    .accessibilityFocused($focusedElement, equals: .status)
 
                 Button("Retry") {
                     Task {
@@ -186,6 +212,7 @@ private extension SubjectsTabView {
                 .tracking(1.4)
                 .foregroundStyle(SubjectsPalette.muted)
                 .padding(.horizontal, 4)
+                .accessibilityHeader()
 
             if let subjects = content?.subjects, !subjects.isEmpty {
                 VStack(spacing: 20) {
@@ -280,7 +307,9 @@ private struct SubjectCard: View {
                         Image(systemName: subject.iconSystemName)
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundStyle(SubjectsPalette.brand)
+                            .accessibilityHidden(true)
                     }
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(subject.title)
@@ -303,6 +332,7 @@ private struct SubjectCard: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(SubjectsPalette.lockedForeground)
+                    .accessibilityHidden(true)
             }
             .padding(20)
             .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
@@ -311,6 +341,10 @@ private struct SubjectCard: View {
             .shadow(color: Color.black.opacity(0.03), radius: 12, x: 0, y: 6)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(subject.title)
+        .accessibilityValue(subject.subtitle)
+        .accessibilityHint("Open this subject.")
     }
 }
 

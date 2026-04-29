@@ -4,9 +4,15 @@ struct HomeView: View {
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
     @StateObject private var dashboardViewModel = HomeDashboardViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let providedContent: HomeDashboardContent?
     private let actions: HomeViewActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(content: HomeDashboardContent? = nil, actions: HomeViewActions = .init()) {
         providedContent = content
@@ -43,6 +49,16 @@ struct HomeView: View {
         .background(HomePalette.canvas.ignoresSafeArea())
         .task(id: refreshCenter.dashboardToken) {
             await loadDashboard(forceRefresh: dashboardViewModel.content != nil)
+        }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: dashboardViewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
         }
     }
 
@@ -88,6 +104,8 @@ private extension HomeView {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .accessibilityHint("Open profile settings.")
             }
             .padding(.leading, 24)
             .padding(.trailing, 24)
@@ -106,6 +124,8 @@ private extension HomeView {
                 .font(AppTypography.homeGreetingHeadline)
                 .tracking(-0.75)
                 .foregroundStyle(HomePalette.ink)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
         }
     }
 
@@ -124,6 +144,7 @@ private extension HomeView {
                 .font(.footnote)
                 .foregroundStyle(HomePalette.dangerText)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -303,6 +324,10 @@ private extension HomeView {
             .homeCardStyle(cornerRadius: 20)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(dashboard.weeklyProgress.title)
+        .accessibilityValue("\(dashboard.weeklyProgress.scoreText), \(dashboard.weeklyProgress.statusText)")
+        .accessibilityHint("Open detailed progress insights.")
     }
 
     var weaknessSection: some View {
@@ -450,6 +475,7 @@ private struct FrostedPill: View {
             .padding(.vertical, 4)
             .background(.white.opacity(0.20))
             .clipShape(Capsule(style: .continuous))
+            .accessibilityHidden(true)
     }
 }
 
@@ -470,6 +496,7 @@ private struct HomeProgressTrack: View {
                 }
         }
         .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
+        .accessibilityHidden(true)
     }
 
     private var clampedValue: CGFloat {
@@ -493,6 +520,7 @@ private struct SmallBlueButton: View {
                 .shadow(color: HomePalette.brand.opacity(0.20), radius: 12, x: 0, y: 8)
         }
         .buttonStyle(.plain)
+        .accessibilityHint("Double tap to continue.")
     }
 }
 
@@ -512,6 +540,7 @@ private struct WhiteFocusButton: View {
                 .shadow(color: .black.opacity(0.10), radius: 15, x: 0, y: 10)
         }
         .buttonStyle(.plain)
+        .accessibilityHint("Open this focus area.")
     }
 }
 
@@ -531,6 +560,7 @@ private struct DangerActionButton: View {
                 .shadow(color: HomePalette.brand.opacity(0.18), radius: 18, x: 0, y: 10)
         }
         .buttonStyle(.plain)
+        .accessibilityHint("Open the recommended next step.")
     }
 }
 
@@ -547,10 +577,12 @@ private struct QuickToolCard: View {
                     Circle()
                         .fill(HomePalette.accentTint(for: tool.accentStyle))
                         .frame(width: 40, height: 40)
+                        .accessibilityHidden(true)
 
                     Image(systemName: tool.icon)
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(HomePalette.accent(for: tool.accentStyle))
+                        .accessibilityHidden(true)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -569,6 +601,10 @@ private struct QuickToolCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(tool.title)
+        .accessibilityValue(tool.subtitle)
+        .accessibilityHint("Open this quick tool.")
     }
 }
 
@@ -577,15 +613,17 @@ private struct SubjectCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(HomePalette.accentTint(for: subject.accentStyle))
-                    .frame(width: 48, height: 48)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(HomePalette.accentTint(for: subject.accentStyle))
+                        .frame(width: 48, height: 48)
+                        .accessibilityHidden(true)
 
-                Image(systemName: subject.icon)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
-            }
+                    Image(systemName: subject.icon)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
+                        .accessibilityHidden(true)
+                }
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(subject.title)
@@ -615,6 +653,9 @@ private struct SubjectCard: View {
         .frame(maxWidth: .infinity, minHeight: 184, alignment: .topLeading)
         .padding(21)
         .homeCardStyle(cornerRadius: 20)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(subject.title)
+        .accessibilityValue("\(subject.detail). \(subject.progressText)")
     }
 }
 
@@ -628,10 +669,12 @@ private struct BiologySubjectCard: View {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(HomePalette.accentTint(for: subject.accentStyle))
                         .frame(width: 48, height: 48)
+                        .accessibilityHidden(true)
 
                     Image(systemName: subject.icon)
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
+                        .accessibilityHidden(true)
                 }
 
                 VStack(alignment: .leading, spacing: 0) {
@@ -662,6 +705,9 @@ private struct BiologySubjectCard: View {
         .padding(21)
         .frame(maxWidth: .infinity, minHeight: 90)
         .homeCardStyle(cornerRadius: 20)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(subject.title)
+        .accessibilityValue("\(subject.detail). \(subject.valueText). \(subject.trailingLabel)")
     }
 }
 

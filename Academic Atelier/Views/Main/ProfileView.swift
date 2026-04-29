@@ -3,7 +3,13 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject private var session: SessionViewModel
     @StateObject private var viewModel = ProfileViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
     @State private var path: [ProfileRoute] = []
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -34,6 +40,16 @@ struct ProfileView: View {
                 await refreshProfile(forceRefresh: true)
             }
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -47,6 +63,8 @@ private extension ProfileView {
             Text(content.title)
                 .font(AppTypography.profileTitle)
                 .foregroundStyle(ProfilePalette.textPrimary)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Spacer(minLength: 12)
 
@@ -59,6 +77,8 @@ private extension ProfileView {
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+            .accessibilityHint("Open profile settings.")
         }
         .frame(height: 40)
     }
@@ -77,6 +97,7 @@ private extension ProfileView {
                 Text(viewModel.errorMessage)
                     .font(.footnote)
                     .foregroundStyle(SubjectsPalette.resultIncorrect)
+                    .accessibilityFocused($focusedElement, equals: .status)
 
                 Button("Retry") {
                     Task {
@@ -115,6 +136,7 @@ private extension ProfileView {
                 .font(AppTypography.profileSectionLabel)
                 .tracking(1.8)
                 .foregroundStyle(ProfilePalette.sectionLabel)
+                .accessibilityHeader()
 
             VStack(spacing: 30) {
                 ForEach(content.identityItems) { item in
@@ -152,6 +174,7 @@ private extension ProfileView {
         }
         .buttonStyle(.plain)
         .padding(.top, 20)
+        .accessibilityHint("Sign out of your account.")
     }
 
     func refreshProfile(forceRefresh: Bool) async {
@@ -200,6 +223,7 @@ private struct ProfileAvatarView: View {
                 .font(.system(size: 28, weight: .black))
                 .foregroundStyle(ProfilePalette.avatarText)
         }
+        .accessibilityHidden(true)
     }
 
     private var initials: String {
@@ -240,6 +264,9 @@ private struct ProfileIdentityRow: View {
 
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.title)
+        .accessibilityValue(item.detail)
     }
 
     private var iconName: String {

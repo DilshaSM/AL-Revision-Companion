@@ -3,9 +3,15 @@ import SwiftUI
 struct SignUpView: View {
     @EnvironmentObject var session: SessionViewModel
     @StateObject private var viewModel = AuthViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
     
     @State private var showPassword = false
     @State private var showConfirmPassword = false
+
+    private enum FocusTarget: Hashable {
+        case title
+        case error
+    }
 
     var body: some View {
         ZStack {
@@ -36,6 +42,16 @@ struct SignUpView: View {
                 .padding(.horizontal, 24)
             }
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .error
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -51,6 +67,7 @@ private extension SignUpView {
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Back to sign in")
     }
 
     var headerSection: some View {
@@ -59,6 +76,8 @@ private extension SignUpView {
                 .font(AppTypography.authScreenTitle)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text("Start your revision journey.")
                 .font(AppTypography.authScreenSubtitle)
@@ -110,6 +129,7 @@ private extension SignUpView {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 2)
+                    .accessibilityFocused($focusedElement, equals: .error)
             }
         }
     }
@@ -132,6 +152,7 @@ private extension SignUpView {
                 }
                 .font(AppTypography.authPromptAction)
                 .foregroundStyle(AppColors.primary)
+                .accessibilityHint("Return to the sign-in screen.")
             }
             .frame(maxWidth: .infinity)
         }
@@ -166,6 +187,7 @@ private extension SignUpView {
                 .font(AppTypography.authLegalCopy)
                 .foregroundStyle(.secondary)
                 .underline()
+                .accessibilityHint("Terms of Service is not available yet.")
 
                 Text("and")
                     .font(AppTypography.authLegalCopy)
@@ -177,6 +199,7 @@ private extension SignUpView {
                 .font(AppTypography.authLegalCopy)
                 .foregroundStyle(.secondary)
                 .underline()
+                .accessibilityHint("Privacy Policy is not available yet.")
             }
         }
         .frame(maxWidth: .infinity)

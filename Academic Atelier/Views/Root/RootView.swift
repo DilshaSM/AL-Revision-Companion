@@ -9,6 +9,7 @@ struct RootView: View {
                 ProgressView("Loading session...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(AppColors.background.ignoresSafeArea())
+                    .accessibilityLabel("Loading session")
             } else {
                 switch session.authRoute {
                 case .signIn:

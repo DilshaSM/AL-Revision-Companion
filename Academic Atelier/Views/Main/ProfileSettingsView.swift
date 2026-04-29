@@ -5,8 +5,14 @@ struct ProfileSettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var viewModel = ProfileSettingsViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let content = ProfileSettingsContent.placeholder
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -20,6 +26,7 @@ struct ProfileSettingsView: View {
                         .font(AppTypography.profileSettingsSectionLabel)
                         .tracking(1.8)
                         .foregroundStyle(ProfilePalette.sectionLabel)
+                        .accessibilityHeader()
 
                     VStack(spacing: 28) {
                         ForEach(content.preferences) { preference in
@@ -55,6 +62,16 @@ struct ProfileSettingsView: View {
             guard newSettings != viewModel.settings else { return }
             viewModel.applyExternalSettings(newSettings)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -64,6 +81,8 @@ private extension ProfileSettingsView {
             Text(content.title)
                 .font(AppTypography.profileSettingsTitle)
                 .foregroundStyle(ProfilePalette.textPrimary)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Spacer(minLength: 12)
 
@@ -76,6 +95,7 @@ private extension ProfileSettingsView {
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close settings")
         }
         .padding(.horizontal, 24)
         .padding(.top, 48)
@@ -96,6 +116,7 @@ private extension ProfileSettingsView {
             Text(viewModel.errorMessage)
                 .font(.footnote)
                 .foregroundStyle(SubjectsPalette.resultIncorrect)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -178,6 +199,7 @@ private struct PreferenceRow: View {
                     .font(AppTypography.profileSettingsRowSubtitle)
                     .foregroundStyle(ProfilePalette.textSecondary)
             }
+            .accessibilityHidden(true)
 
             Spacer(minLength: 12)
 
@@ -185,6 +207,8 @@ private struct PreferenceRow: View {
                 .labelsHidden()
                 .tint(ProfilePalette.toggleTint)
                 .disabled(isDisabled)
+                .accessibilityLabel(preference.title)
+                .accessibilityHint(preference.subtitle)
         }
         .opacity(isDisabled ? 0.7 : 1)
     }
@@ -197,10 +221,12 @@ private struct PreferenceRow: View {
             Circle()
                 .fill(palette.background)
                 .frame(width: 52, height: 52)
+                .accessibilityHidden(true)
 
             Image(systemName: palette.symbolName)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(palette.foreground)
+                .accessibilityHidden(true)
         }
     }
 

@@ -16,5 +16,6 @@ struct ProgressFillBar: View {
             }
         }
         .frame(height: 4)
+        .accessibilityHidden(true)
     }
 }

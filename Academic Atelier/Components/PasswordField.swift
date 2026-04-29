@@ -18,6 +18,7 @@ struct PasswordField: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
+                .accessibilityHidden(true)
 
             HStack(spacing: 12) {
                 ZStack {
@@ -25,11 +26,15 @@ struct PasswordField: View {
                         .opacity(isSecure ? 1 : 0)
                         .focused($focusedField, equals: .secure)
                         .allowsHitTesting(isSecure)
+                        .accessibilityLabel(title)
+                        .accessibilityHint(placeholder)
 
                     TextField(placeholder, text: $text)
                         .opacity(isSecure ? 0 : 1)
                         .focused($focusedField, equals: .visible)
                         .allowsHitTesting(!isSecure)
+                        .accessibilityLabel(title)
+                        .accessibilityHint(placeholder)
                 }
                 .textContentType(textContentType)
                 .textInputAutocapitalization(.never)
@@ -47,11 +52,13 @@ struct PasswordField: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSecure ? "Show password" : "Hide password")
+                .accessibilityHint("Double tap to toggle secure text visibility.")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 14))
+            .accessibilityElement(children: .contain)
         }
     }
 }

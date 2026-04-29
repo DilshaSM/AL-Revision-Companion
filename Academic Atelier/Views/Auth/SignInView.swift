@@ -3,9 +3,16 @@ import SwiftUI
 struct SignInView: View {
     @EnvironmentObject var session: SessionViewModel
     @StateObject private var viewModel = AuthViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
     
     @State private var showPassword = false
     @State private var isShowingForgotPassword = false
+
+    private enum FocusTarget: Hashable {
+        case title
+        case formError
+        case biometricError
+    }
 
     var body: some View {
         ZStack {
@@ -42,6 +49,23 @@ struct SignInView: View {
                 }
             }
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .formError
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: session.biometricErrorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .biometricError
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -53,6 +77,8 @@ private extension SignInView {
                 .font(AppTypography.authScreenTitle)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text("Access your academic companion")
                 .font(AppTypography.authScreenSubtitle)
@@ -87,6 +113,7 @@ private extension SignInView {
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 4)
+                    .accessibilityFocused($focusedElement, equals: .formError)
             }
 
             PrimaryButton(
@@ -108,6 +135,7 @@ private extension SignInView {
         .font(AppTypography.authInlineAction)
         .foregroundStyle(AppColors.primary)
         .frame(maxWidth: .infinity)
+        .accessibilityHint("Open password recovery.")
     }
 
     var quickAccessSection: some View {
@@ -127,15 +155,18 @@ private extension SignInView {
                         RoundedRectangle(cornerRadius: 16)
                             .fill(AppColors.primary.opacity(0.10))
                             .frame(width: 60, height: 60)
+                            .accessibilityHidden(true)
 
                         if session.isAuthenticatingWithBiometrics {
                             ProgressView()
                                 .tint(AppColors.primary)
+                                .accessibilityHidden(true)
                         } else {
                             Image(systemName: session.biometricType.iconSystemName)
                                 .frame(width: 30, height: 30)
                                 .font(.system(size: 30, weight: .regular))
                                 .foregroundStyle(AppColors.primary)
+                                .accessibilityHidden(true)
                         }
                     }
 
@@ -156,6 +187,7 @@ private extension SignInView {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(Color(.systemGray3))
+                        .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -169,12 +201,17 @@ private extension SignInView {
             }
             .buttonStyle(.plain)
             .disabled(session.isAuthenticatingWithBiometrics || viewModel.isLoading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(session.biometricButtonTitle)
+            .accessibilityValue(session.isAuthenticatingWithBiometrics ? "Authenticating" : "")
+            .accessibilityHint("Use \(session.biometricType.displayName) to unlock your saved session.")
 
             if !session.biometricErrorMessage.isEmpty {
                 Text(session.biometricErrorMessage)
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .biometricError)
             }
         }
     }
@@ -206,6 +243,7 @@ private extension SignInView {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Open account creation.")
         }
         .padding(20)
         .frame(maxWidth: .infinity, minHeight: 76)

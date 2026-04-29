@@ -13,6 +13,7 @@ struct StreamSelectionCard: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 76, height: 76)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(title)
@@ -31,6 +32,7 @@ struct StreamSelectionCard: View {
                 Image(systemName: "arrow.right")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(Color.gray.opacity(0.45))
+                    .accessibilityHidden(true)
             }
             .padding(20)
             .background(AppColors.cardBackground)
@@ -43,5 +45,9 @@ struct StreamSelectionCard: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(subtitle)
+        .accessibilityHint("Double tap to select this stream.")
     }
 }

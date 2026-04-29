@@ -11,6 +11,7 @@ struct AppTextField: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
+                .accessibilityHidden(true)
 
             TextField(placeholder, text: $text)
                 .keyboardType(keyboardType)
@@ -20,6 +21,8 @@ struct AppTextField: View {
                 .padding(.vertical, 14)
                 .background(Color(.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
+                .accessibilityLabel(title)
+                .accessibilityHint(placeholder)
         }
     }
 }

@@ -3,9 +3,15 @@ import SwiftUI
 struct ForgotPasswordView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: PasswordResetViewModel
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
     @State private var showVerification = false
 
     private let onCompleted: () -> Void
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(
         email: String = "",
@@ -38,6 +44,23 @@ struct ForgotPasswordView: View {
                 onCompleted: onCompleted
             )
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: viewModel.infoMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -53,6 +76,7 @@ private extension ForgotPasswordView {
                     .foregroundStyle(AppColors.primary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             Spacer()
         }
@@ -64,6 +88,8 @@ private extension ForgotPasswordView {
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text("Enter your email for the verification process, we will send 4 digits code to your email.")
                 .font(.system(size: 18, weight: .regular))
@@ -91,6 +117,7 @@ private extension ForgotPasswordView {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             if !viewModel.infoMessage.isEmpty {
@@ -98,6 +125,7 @@ private extension ForgotPasswordView {
                     .font(.footnote)
                     .foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             PrimaryButton(

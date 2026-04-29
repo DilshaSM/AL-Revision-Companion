@@ -14,6 +14,7 @@ struct StyledTextField: View {
                 .font(.system(size: 10, weight: .bold))
                 .tracking(1.2)
                 .foregroundStyle(Color(.systemGray))
+                .accessibilityHidden(true)
 
             HStack {
                 Group {
@@ -32,6 +33,8 @@ struct StyledTextField: View {
                 .autocorrectionDisabled()
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(.primary)
+                .accessibilityLabel(title)
+                .accessibilityHint(placeholder)
 
                 if isSecure, let isSecureVisible {
                     Button {
@@ -42,6 +45,8 @@ struct StyledTextField: View {
                             .foregroundStyle(Color(.systemGray3))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isSecureVisible.wrappedValue ? "Hide \(title.lowercased())" : "Show \(title.lowercased())")
+                    .accessibilityHint("Double tap to toggle secure text visibility.")
                 }
             }
         }

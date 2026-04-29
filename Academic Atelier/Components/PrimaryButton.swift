@@ -33,5 +33,20 @@ struct PrimaryButton: View {
         }
         .disabled(isLoading || isDisabled)
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint(isDisabled ? "This action is currently unavailable." : "")
+    }
+
+    private var accessibilityValue: String {
+        if isLoading {
+            return "Loading"
+        }
+
+        if isDisabled {
+            return "Dimmed"
+        }
+
+        return ""
     }
 }

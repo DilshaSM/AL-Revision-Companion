@@ -2,6 +2,12 @@ import SwiftUI
 
 struct StreamSelectionView: View {
     @EnvironmentObject var session: SessionViewModel
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     var body: some View {
         ZStack {
@@ -22,6 +28,16 @@ struct StreamSelectionView: View {
         .task {
             await session.ensureAvailableStreams()
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: session.streamErrorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -33,6 +49,8 @@ private extension StreamSelectionView {
                 .font(.system(size: 36, weight: .bold))
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text("Choose your academic focus to unlock curated learning paths tailored for your professional future.")
                 .font(.system(size: 16, weight: .regular))
@@ -56,6 +74,7 @@ private extension StreamSelectionView {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             ForEach(session.availableStreams) { stream in
