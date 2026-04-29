@@ -2,15 +2,13 @@ import SwiftUI
 
 struct FlashcardsTopicSelectionView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
 
-    private let content: FlashcardsTopicSelectionContent
+    @StateObject private var viewModel = FlashcardsTopicSelectionViewModel()
+
     private let actions: FlashcardsTopicSelectionActions
 
-    init(
-        content: FlashcardsTopicSelectionContent = .placeholder,
-        actions: FlashcardsTopicSelectionActions = .init()
-    ) {
-        self.content = content
+    init(actions: FlashcardsTopicSelectionActions = .init()) {
         self.actions = actions
     }
 
@@ -19,10 +17,10 @@ struct FlashcardsTopicSelectionView: View {
             topBar
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 44) {
+                VStack(alignment: .leading, spacing: 32) {
                     headerSection
+                    statusSection
                     availableTopicsSection
-                    recentlyPracticedSection
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
@@ -31,6 +29,12 @@ struct FlashcardsTopicSelectionView: View {
         }
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task {
+            await load(forceRefresh: false)
+        }
+        .refreshable {
+            await load(forceRefresh: true)
+        }
     }
 }
 
@@ -60,66 +64,100 @@ private extension FlashcardsTopicSelectionView {
 
     var headerSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text(content.title)
+            Text(viewModel.content?.title ?? "Flashcards")
                 .font(AppTypography.flashcardsTopicSelectionTitle)
                 .tracking(-1.1)
                 .foregroundStyle(QuickRevisionPalette.ink)
 
-            Text(content.subtitle)
+            Text(viewModel.content?.subtitle ?? "Choose a topic to start a quick recall session.")
                 .font(AppTypography.flashcardsTopicSelectionSubtitle)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading flashcard decks...")
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            }
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await load(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(QuickRevisionPalette.brand)
+            }
+        } else if !viewModel.errorMessage.isEmpty {
+            Text(viewModel.errorMessage)
+                .font(.footnote)
+                .foregroundStyle(SubjectsPalette.resultIncorrect)
+        } else if viewModel.isLoading {
+            Text("Refreshing flashcard decks...")
+                .font(.footnote)
+                .foregroundStyle(QuickRevisionPalette.muted)
+        }
+    }
+
     var availableTopicsSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text(content.availableTopicsTitle.uppercased())
+            Text((viewModel.content?.availableTopicsTitle ?? "Available Topics").uppercased())
                 .font(AppTypography.flashcardsTopicSelectionSectionLabel)
                 .tracking(2.0)
                 .foregroundStyle(QuickRevisionPalette.sectionLabel)
 
-            VStack(spacing: 20) {
-                ForEach(content.availableTopics) { topic in
-                    FlashcardsTopicRow(topic: topic) {
-                        actions.onTapTopic(topic)
+            if let content = viewModel.content, content.availableTopics.isEmpty {
+                Text(content.emptyStateMessage)
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            } else if let content = viewModel.content {
+                VStack(spacing: 20) {
+                    ForEach(content.availableTopics) { topic in
+                        FlashcardsTopicRow(
+                            topic: topic,
+                            isStarting: viewModel.startingDeckID == topic.id && viewModel.isStartingDeck
+                        ) {
+                            Task {
+                                if let sessionContent = await viewModel.startSession(for: topic) {
+                                    actions.onStartSession(sessionContent)
+                                } else if viewModel.requiresSignOut {
+                                    session.signOut()
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    var recentlyPracticedSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text(content.recentlyPracticedTitle.uppercased())
-                .font(AppTypography.flashcardsTopicSelectionSectionLabel)
-                .tracking(2.0)
-                .foregroundStyle(QuickRevisionPalette.sectionLabel)
+    func load(forceRefresh: Bool) async {
+        await viewModel.load(forceRefresh: forceRefresh)
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 16),
-                    GridItem(.flexible(), spacing: 16)
-                ],
-                spacing: 16
-            ) {
-                ForEach(content.recentlyPracticed) { topic in
-                    FlashcardsRecentCard(topic: topic) {
-                        actions.onTapRecentTopic(topic)
-                    }
-                }
-            }
+        if viewModel.requiresSignOut {
+            session.signOut()
         }
     }
 }
 
 struct FlashcardsTopicSelectionActions {
-    var onTapTopic: (FlashcardsTopicSelectionContent.Topic) -> Void = { _ in }
-    var onTapRecentTopic: (FlashcardsTopicSelectionContent.RecentTopic) -> Void = { _ in }
+    var onStartSession: (FlashcardsSessionContent) -> Void = { _ in }
 }
 
 private struct FlashcardsTopicRow: View {
-    let topic: FlashcardsTopicSelectionContent.Topic
+    let topic: FlashcardsTopicSelectionContent.Deck
+    let isStarting: Bool
     let action: () -> Void
 
     var body: some View {
@@ -130,9 +168,14 @@ private struct FlashcardsTopicRow: View {
                         .fill(QuickRevisionPalette.iconBackground)
                         .frame(width: 84, height: 84)
 
-                    Image(systemName: topic.symbolName)
-                        .font(.system(size: 34, weight: .medium))
-                        .foregroundStyle(QuickRevisionPalette.brand)
+                    if isStarting {
+                        ProgressView()
+                            .tint(QuickRevisionPalette.brand)
+                    } else {
+                        Image(systemName: topic.symbolName)
+                            .font(.system(size: 34, weight: .medium))
+                            .foregroundStyle(QuickRevisionPalette.brand)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -145,6 +188,13 @@ private struct FlashcardsTopicRow: View {
                         .font(AppTypography.flashcardsTopicSelectionRowDetail)
                         .foregroundStyle(QuickRevisionPalette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let description = topic.description, !description.isEmpty {
+                        Text(description)
+                            .font(AppTypography.flashcardsTopicSelectionRecentDetail)
+                            .foregroundStyle(QuickRevisionPalette.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
 
                 Image(systemName: "chevron.right")
@@ -158,45 +208,6 @@ private struct FlashcardsTopicRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct FlashcardsRecentCard: View {
-    let topic: FlashcardsTopicSelectionContent.RecentTopic
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(QuickRevisionPalette.iconBackground)
-                        .frame(width: 52, height: 52)
-
-                    Image(systemName: topic.symbolName)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(QuickRevisionPalette.brand)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(topic.title)
-                        .font(AppTypography.flashcardsTopicSelectionRecentTitle)
-                        .foregroundStyle(QuickRevisionPalette.ink)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Text(topic.subjectCode)
-                        .font(AppTypography.flashcardsTopicSelectionRecentDetail)
-                        .foregroundStyle(QuickRevisionPalette.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
-            .frame(maxWidth: .infinity, minHeight: 108, alignment: .leading)
-            .background(QuickRevisionPalette.iconBackgroundMuted)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        }
-        .buttonStyle(.plain)
+        .disabled(isStarting)
     }
 }

@@ -1,39 +1,11 @@
 import Foundation
 
-struct RecallToolsContent {
-    var recentItems: [RecentItem]
+struct RecallToolsContent: Hashable {
+    let title: String
+    let subtitle: String
 
-    static let placeholder = RecallToolsContent(
-        recentItems: [
-            .init(
-                id: "physics-thermodynamics-flashcards",
-                title: "Physics – Thermodynamics\nFlashcards",
-                detail: "Last practiced 2h ago",
-                iconName: "clock.arrow.circlepath",
-                accent: .blue
-            ),
-            .init(
-                id: "biology-genetics-audio",
-                title: "Biology – Genetics Audio Notes",
-                detail: "Last practiced Yesterday",
-                iconName: "clock.arrow.circlepath",
-                accent: .orange
-            )
-        ]
+    static let live = RecallToolsContent(
+        title: "Recall Tools",
+        subtitle: "Strengthen memory with flashcards and audio-based revision."
     )
-}
-
-extension RecallToolsContent {
-    struct RecentItem: Identifiable, Hashable {
-        var id: String
-        var title: String
-        var detail: String
-        var iconName: String
-        var accent: Accent
-    }
-
-    enum Accent: Hashable {
-        case blue
-        case orange
-    }
 }

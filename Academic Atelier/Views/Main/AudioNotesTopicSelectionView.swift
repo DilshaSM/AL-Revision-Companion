@@ -2,15 +2,13 @@ import SwiftUI
 
 struct AudioNotesTopicSelectionView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
 
-    private let content: AudioNotesTopicSelectionContent
+    @StateObject private var viewModel = AudioNotesTopicSelectionViewModel()
+
     private let actions: AudioNotesTopicSelectionActions
 
-    init(
-        content: AudioNotesTopicSelectionContent = .placeholder,
-        actions: AudioNotesTopicSelectionActions = .init()
-    ) {
-        self.content = content
+    init(actions: AudioNotesTopicSelectionActions = .init()) {
         self.actions = actions
     }
 
@@ -21,10 +19,10 @@ struct AudioNotesTopicSelectionView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     headerSection
+                    statusSection
+                        .padding(.top, 20)
                     availableTopicsSection
                         .padding(.top, 24)
-                    recentAudioNotesSection
-                        .padding(.top, 50)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 26)
@@ -33,6 +31,12 @@ struct AudioNotesTopicSelectionView: View {
         }
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task {
+            await load(forceRefresh: false)
+        }
+        .refreshable {
+            await load(forceRefresh: true)
+        }
     }
 }
 
@@ -62,60 +66,90 @@ private extension AudioNotesTopicSelectionView {
 
     var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(content.title)
+            Text(viewModel.content?.title ?? "Audio Notes")
                 .font(AppTypography.audioNotesTopicSelectionTitle)
                 .tracking(-0.9)
                 .foregroundStyle(QuickRevisionPalette.ink)
 
-            Text(content.subtitle)
+            Text(viewModel.content?.subtitle ?? "Choose a topic to start an audio revision session.")
                 .font(AppTypography.audioNotesTopicSelectionSubtitle)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading audio notes...")
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            }
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await load(forceRefresh: true)
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(QuickRevisionPalette.brand)
+            }
+        } else if !viewModel.errorMessage.isEmpty {
+            Text(viewModel.errorMessage)
+                .font(.footnote)
+                .foregroundStyle(SubjectsPalette.resultIncorrect)
+        } else if viewModel.isLoading {
+            Text("Refreshing audio notes...")
+                .font(.footnote)
+                .foregroundStyle(QuickRevisionPalette.muted)
+        }
+    }
+
     var availableTopicsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(content.availableTopicsTitle.uppercased())
+            Text((viewModel.content?.availableTopicsTitle ?? "Available Notes").uppercased())
                 .font(AppTypography.audioNotesTopicSelectionSectionLabel)
                 .tracking(1.6)
                 .foregroundStyle(QuickRevisionPalette.sectionLabel)
 
-            VStack(spacing: 12) {
-                ForEach(content.availableTopics) { topic in
-                    AudioNotesTopicRow(topic: topic) {
-                        actions.onTapTopic(topic)
+            if let content = viewModel.content, content.availableTopics.isEmpty {
+                Text(content.emptyStateMessage)
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            } else if let content = viewModel.content {
+                VStack(spacing: 12) {
+                    ForEach(content.availableTopics) { topic in
+                        AudioNotesTopicRow(topic: topic) {
+                            actions.onTapNote(topic)
+                        }
                     }
                 }
             }
         }
     }
 
-    var recentAudioNotesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(content.recentAudioNotesTitle.uppercased())
-                .font(AppTypography.audioNotesTopicSelectionSectionLabel)
-                .tracking(1.6)
-                .foregroundStyle(QuickRevisionPalette.sectionLabel)
+    func load(forceRefresh: Bool) async {
+        await viewModel.load(forceRefresh: forceRefresh)
 
-            VStack(spacing: 12) {
-                ForEach(content.recentAudioNotes) { note in
-                    RecentAudioNoteRow(note: note) {
-                        actions.onTapRecentAudioNote(note)
-                    }
-                }
-            }
+        if viewModel.requiresSignOut {
+            session.signOut()
         }
     }
 }
 
 struct AudioNotesTopicSelectionActions {
-    var onTapTopic: (AudioNotesTopicSelectionContent.Topic) -> Void = { _ in }
-    var onTapRecentAudioNote: (AudioNotesTopicSelectionContent.RecentAudioNote) -> Void = { _ in }
+    var onTapNote: (AudioNotesTopicSelectionContent.Note) -> Void = { _ in }
 }
 
 private struct AudioNotesTopicRow: View {
-    let topic: AudioNotesTopicSelectionContent.Topic
+    let topic: AudioNotesTopicSelectionContent.Note
     let action: () -> Void
 
     var body: some View {
@@ -142,6 +176,14 @@ private struct AudioNotesTopicRow: View {
                         .foregroundStyle(QuickRevisionPalette.muted)
                         .padding(.top, 2)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let description = topic.description, !description.isEmpty {
+                        Text(description)
+                            .font(AppTypography.audioNotesTopicSelectionRecentDetail)
+                            .foregroundStyle(QuickRevisionPalette.muted)
+                            .padding(.top, 2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
 
                 Spacer(minLength: 12)
@@ -159,50 +201,7 @@ private struct AudioNotesTopicRow: View {
     }
 }
 
-private struct RecentAudioNoteRow: View {
-    let note: AudioNotesTopicSelectionContent.RecentAudioNote
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(AudioNotesPalette.recentIconBackground)
-                        .frame(width: 32, height: 32)
-
-                    Image(systemName: note.symbolName)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(AudioNotesPalette.iconAccent)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(note.title)
-                        .font(AppTypography.audioNotesTopicSelectionRecentTitle)
-                        .foregroundStyle(QuickRevisionPalette.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Text(note.detailText)
-                        .font(AppTypography.audioNotesTopicSelectionRecentDetail)
-                        .tracking(0.4)
-                        .foregroundStyle(QuickRevisionPalette.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 59, alignment: .leading)
-            .background(AudioNotesPalette.recentBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 private enum AudioNotesPalette {
     static let iconAccent = QuickRevisionPalette.brand
     static let iconBackground = QuickRevisionPalette.iconBackground
-    static let recentBackground = Color(uiColor: .init(red: 243.0 / 255.0, green: 243.0 / 255.0, blue: 248.0 / 255.0, alpha: 1))
-    static let recentIconBackground = iconAccent.opacity(0.10)
 }

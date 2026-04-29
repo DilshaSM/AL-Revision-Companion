@@ -23,26 +23,23 @@ struct HomeTabView: View {
                     RecallToolsView(
                         actions: .init(
                             onTapFlashcards: handleFlashcardsTap,
-                            onTapAudioNotes: handleAudioNotesTap,
-                            onTapRecentItem: handleRecallToolsRecentItemTap
+                            onTapAudioNotes: handleAudioNotesTap
                         )
                     )
                 case .flashcardsTopicSelection:
                     FlashcardsTopicSelectionView(
                         actions: .init(
-                            onTapTopic: handleFlashcardsTopicTap,
-                            onTapRecentTopic: handleFlashcardsRecentTap
+                            onStartSession: handleFlashcardsSessionStart
                         )
                     )
                 case .audioNotesTopicSelection:
                     AudioNotesTopicSelectionView(
                         actions: .init(
-                            onTapTopic: handleAudioNotesTopicTap,
-                            onTapRecentAudioNote: handleAudioNotesRecentTap
+                            onTapNote: handleAudioNoteTap
                         )
                     )
-                case let .audioNotesDetail(content):
-                    AudioNotesDetailView(content: content)
+                case let .audioNotesDetail(note):
+                    AudioNotesDetailView(note: note)
                 case let .topicSelection(subject):
                     QuickRevisionTopicSelectionView(
                         subject: subject,
@@ -102,33 +99,12 @@ struct HomeTabView: View {
         path.append(.audioNotesTopicSelection)
     }
 
-    private func handleRecallToolsRecentItemTap(_ item: RecallToolsContent.RecentItem) {
-        switch item.accent {
-        case .blue:
-            handleFlashcardsTap()
-        case .orange:
-            handleAudioNotesTap()
-        }
-    }
-
-    private func handleFlashcardsTopicTap(_ topic: FlashcardsTopicSelectionContent.Topic) {
-        guard let content = FlashcardsTopicSelectionContent.placeholder.sessionContent(for: topic) else { return }
+    private func handleFlashcardsSessionStart(_ content: FlashcardsSessionContent) {
         path.append(.flashcardsSession(content))
     }
 
-    private func handleFlashcardsRecentTap(_ recentTopic: FlashcardsTopicSelectionContent.RecentTopic) {
-        guard let content = FlashcardsTopicSelectionContent.placeholder.sessionContent(for: recentTopic) else { return }
-        path.append(.flashcardsSession(content))
-    }
-
-    private func handleAudioNotesTopicTap(_ topic: AudioNotesTopicSelectionContent.Topic) {
-        guard let content = AudioNotesTopicSelectionContent.placeholder.detailContent(for: topic) else { return }
-        path.append(.audioNotesDetail(content))
-    }
-
-    private func handleAudioNotesRecentTap(_ recentAudioNote: AudioNotesTopicSelectionContent.RecentAudioNote) {
-        guard let content = AudioNotesTopicSelectionContent.placeholder.detailContent(for: recentAudioNote) else { return }
-        path.append(.audioNotesDetail(content))
+    private func handleAudioNoteTap(_ note: AudioNotesTopicSelectionContent.Note) {
+        path.append(.audioNotesDetail(note))
     }
 }
 
@@ -137,7 +113,7 @@ private enum HomeTabRoute: Hashable {
     case recallTools
     case flashcardsTopicSelection
     case audioNotesTopicSelection
-    case audioNotesDetail(AudioNotesDetailContent)
+    case audioNotesDetail(AudioNotesTopicSelectionContent.Note)
     case flashcardsSession(FlashcardsSessionContent)
     case topicSelection(QuickRevisionSubject)
     case topicContent(QuickRevisionTopic)

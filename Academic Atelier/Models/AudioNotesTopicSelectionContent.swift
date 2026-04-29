@@ -1,61 +1,54 @@
 import Foundation
 
 struct AudioNotesTopicSelectionContent: Hashable {
-    var title: String
-    var subtitle: String
-    var availableTopicsTitle: String
-    var availableTopics: [Topic]
-    var recentAudioNotesTitle: String
-    var recentAudioNotes: [RecentAudioNote]
+    let title: String
+    let subtitle: String
+    let availableTopicsTitle: String
+    let availableTopics: [Note]
+    let emptyStateMessage: String
 
-    static let placeholder = AudioNotesTopicSelectionContent(
-        title: "Audio Notes",
-        subtitle: "Choose a topic to start a Audio note",
-        availableTopicsTitle: "Available Topics",
-        availableTopics: [
-            .init(id: "genetics-inheritance", title: "Genetics & Inheritance", subjectName: "Chemistry", durationText: "12 min"),
-            .init(id: "entropy-explained", title: "Entropy Explained", subjectName: "Chemistry", durationText: "24 min"),
-            .init(id: "integration-techniques", title: "Integration Techniques", subjectName: "Mathematics", durationText: "10 min"),
-            .init(id: "newtons-laws", title: "Newton's Laws", subjectName: "Physics", durationText: "18 min")
-        ],
-        recentAudioNotesTitle: "Recent Audio Notes",
-        recentAudioNotes: [
-            .init(id: "entropy-explained-recent", topicID: "entropy-explained", title: "Entropy Explained", subjectName: "Chemistry", durationText: "24 min")
-        ]
-    )
+    static func build(audioNotes: [APIAudioNoteSummary]) -> AudioNotesTopicSelectionContent {
+        AudioNotesTopicSelectionContent(
+            title: "Audio Notes",
+            subtitle: "Choose a topic to start an audio revision session.",
+            availableTopicsTitle: "Available Notes",
+            availableTopics: audioNotes.map(Note.init),
+            emptyStateMessage: "No audio notes available yet."
+        )
+    }
 }
 
 extension AudioNotesTopicSelectionContent {
-    struct Topic: Identifiable, Hashable {
-        var id: String
-        var title: String
-        var subjectName: String
-        var durationText: String
-        var symbolName: String = "headphones"
+    struct Note: Identifiable, Hashable {
+        let id: Int
+        let title: String
+        let subjectName: String
+        let description: String?
+        let durationSeconds: Int
+        let topicId: Int
+        let subjectId: Int
+        let thumbnailURLString: String?
+        let symbolName: String
+
+        init(apiAudioNote: APIAudioNoteSummary) {
+            id = apiAudioNote.id
+            title = apiAudioNote.title
+            subjectName = apiAudioNote.subjectName
+            description = apiAudioNote.description
+            durationSeconds = apiAudioNote.durationSeconds
+            topicId = apiAudioNote.topicId
+            subjectId = apiAudioNote.subjectId
+            thumbnailURLString = apiAudioNote.thumbnailUrl
+            symbolName = "headphones"
+        }
 
         var detailText: String {
-            "\(subjectName) • \(durationText)"
+            "\(subjectName) • \(Self.durationText(for: durationSeconds))"
         }
-    }
 
-    struct RecentAudioNote: Identifiable, Hashable {
-        var id: String
-        var topicID: String
-        var title: String
-        var subjectName: String
-        var durationText: String
-        var symbolName: String = "clock.arrow.circlepath"
-
-        var detailText: String {
-            "\(subjectName.uppercased()) • \(durationText.uppercased())"
+        private static func durationText(for durationSeconds: Int) -> String {
+            let minutes = max(Int(ceil(Double(max(durationSeconds, 0)) / 60.0)), 1)
+            return "\(minutes) min"
         }
-    }
-
-    func detailContent(for topic: Topic) -> AudioNotesDetailContent? {
-        AudioNotesDetailContent.placeholder(forTopicID: topic.id)
-    }
-
-    func detailContent(for recentAudioNote: RecentAudioNote) -> AudioNotesDetailContent? {
-        AudioNotesDetailContent.placeholder(forTopicID: recentAudioNote.topicID)
     }
 }

@@ -6,7 +6,7 @@ struct RecallToolsView: View {
     private let content: RecallToolsContent
     private let actions: RecallToolsViewActions
 
-    init(content: RecallToolsContent = .placeholder, actions: RecallToolsViewActions = .init()) {
+    init(content: RecallToolsContent = .live, actions: RecallToolsViewActions = .init()) {
         self.content = content
         self.actions = actions
     }
@@ -19,7 +19,6 @@ struct RecallToolsView: View {
                 VStack(alignment: .leading, spacing: 40) {
                     headerSection
                     supportToolsSection
-                    recentlyUsedSection
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
@@ -72,12 +71,12 @@ private extension RecallToolsView {
                 .foregroundStyle(QuickRevisionPalette.brand)
 
             VStack(alignment: .leading, spacing: 18) {
-                Text("Recall Tools")
+                Text(content.title)
                     .font(AppTypography.recallToolsTitle)
                     .tracking(-1.1)
                     .foregroundStyle(QuickRevisionPalette.ink)
 
-                Text("Strengthen memory with flashcards and audio-based revision.")
+                Text(content.subtitle)
                     .font(AppTypography.recallToolsSubtitle)
                     .foregroundStyle(QuickRevisionPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -106,37 +105,25 @@ private extension RecallToolsView {
             )
         }
     }
-
-    var recentlyUsedSection: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            Text("Recently Used")
-                .font(AppTypography.recallToolsSectionTitle)
-                .foregroundStyle(QuickRevisionPalette.ink)
-
-            VStack(spacing: 20) {
-                ForEach(content.recentItems) { item in
-                    RecallRecentItemCard(item: item) {
-                        actions.onTapRecentItem(item)
-                    }
-                }
-            }
-        }
-    }
 }
 
 struct RecallToolsViewActions {
     var onTapFlashcards: () -> Void = {}
     var onTapAudioNotes: () -> Void = {}
-    var onTapRecentItem: (RecallToolsContent.RecentItem) -> Void = { _ in }
 }
 
 private struct RecallSupportCard: View {
     let iconName: String
-    let accent: RecallToolsContent.Accent
+    let accent: Accent
     let title: String
     let description: String
     let metadata: String
     let action: () -> Void
+
+    enum Accent {
+        case blue
+        case orange
+    }
 
     var body: some View {
         Button(action: action) {
@@ -198,59 +185,6 @@ private struct RecallSupportCard: View {
             return QuickRevisionPalette.iconBackground
         case .orange:
             return RecallToolsPalette.orangeTint
-        }
-    }
-}
-
-private struct RecallRecentItemCard: View {
-    let item: RecallToolsContent.RecentItem
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 18) {
-                ZStack {
-                    Circle()
-                        .fill(AppColors.cardBackground)
-                        .frame(width: 52, height: 52)
-
-                    Image(systemName: item.iconName)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(iconColor)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(item.title)
-                        .font(AppTypography.recallToolsRecentTitle)
-                        .foregroundStyle(QuickRevisionPalette.ink)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Text(item.detail)
-                        .font(AppTypography.recallToolsRecentDetail)
-                        .foregroundStyle(QuickRevisionPalette.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                Image(systemName: "ellipsis.vertical")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(QuickRevisionPalette.chevron.opacity(0.55))
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(QuickRevisionPalette.iconBackgroundMuted)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var iconColor: Color {
-        switch item.accent {
-        case .blue:
-            return QuickRevisionPalette.brand
-        case .orange:
-            return RecallToolsPalette.orange
         }
     }
 }

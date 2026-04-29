@@ -5,6 +5,7 @@ final class LocalStorageService {
 
     private let userKey = "saved_user"
     private let settingsKey = "profile_settings"
+    private let audioNotePlaybackStateKey = "audio_note_playback_state"
 
     private init() {}
 
@@ -36,8 +37,40 @@ final class LocalStorageService {
         return settings
     }
 
+    func saveAudioNotePlaybackState(_ state: AudioNotePlaybackState) {
+        var states = loadAudioNotePlaybackStates()
+        states["\(state.audioNoteId)"] = state
+
+        if let data = try? JSONEncoder().encode(states) {
+            UserDefaults.standard.set(data, forKey: audioNotePlaybackStateKey)
+        }
+    }
+
+    func loadAudioNotePlaybackState(audioNoteID: Int) -> AudioNotePlaybackState? {
+        loadAudioNotePlaybackStates()["\(audioNoteID)"]
+    }
+
+    func clearAudioNotePlaybackState(audioNoteID: Int) {
+        var states = loadAudioNotePlaybackStates()
+        states.removeValue(forKey: "\(audioNoteID)")
+
+        if let data = try? JSONEncoder().encode(states) {
+            UserDefaults.standard.set(data, forKey: audioNotePlaybackStateKey)
+        }
+    }
+
+    private func loadAudioNotePlaybackStates() -> [String: AudioNotePlaybackState] {
+        guard let data = UserDefaults.standard.data(forKey: audioNotePlaybackStateKey),
+              let states = try? JSONDecoder().decode([String: AudioNotePlaybackState].self, from: data) else {
+            return [:]
+        }
+
+        return states
+    }
+
     func clearAll() {
         UserDefaults.standard.removeObject(forKey: userKey)
         UserDefaults.standard.removeObject(forKey: settingsKey)
+        UserDefaults.standard.removeObject(forKey: audioNotePlaybackStateKey)
     }
 }

@@ -2,22 +2,24 @@ import SwiftUI
 
 struct AudioNotesDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
-    private let content: AudioNotesDetailContent
+    private let note: AudioNotesTopicSelectionContent.Note
 
-    @StateObject private var playbackController: AudioPlaybackController
+    @StateObject private var viewModel = AudioNotesDetailViewModel()
+    @StateObject private var playbackController = AudioPlaybackController()
+
     @State private var scrubProgress: Double?
+    @State private var listeningStartedAt: Date?
+    @State private var pendingListenedSeconds: TimeInterval = 0
+    @State private var lastSavedPositionSeconds = 0
+    @State private var hasConfiguredPlayer = false
+    @State private var didSaveCompletion = false
 
-    init(content: AudioNotesDetailContent) {
-        self.content = content
-        _playbackController = StateObject(
-            wrappedValue: AudioPlaybackController(
-                sourceURL: content.audioURL,
-                initialElapsed: Double(content.elapsedSeconds),
-                initialDuration: Double(content.totalSeconds),
-                playbackRate: content.playbackRate
-            )
-        )
+    init(note: AudioNotesTopicSelectionContent.Note) {
+        self.note = note
     }
 
     var body: some View {
@@ -25,7 +27,8 @@ struct AudioNotesDetailView: View {
             topBar
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 32) {
+                VStack(spacing: 24) {
+                    statusSection
                     playerCard
                 }
                 .padding(.horizontal, 24)
@@ -36,8 +39,31 @@ struct AudioNotesDetailView: View {
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .task(id: note.id) {
+            await loadContent()
+        }
+        .onChange(of: playbackController.isPlaying) { oldValue, isPlaying in
+            handlePlaybackStateChange(oldValue: oldValue, isPlaying: isPlaying)
+        }
+        .onChange(of: playbackController.completionToken) { _, _ in
+            guard hasConfiguredPlayer, playbackController.currentTime >= playbackController.duration else { return }
+
+            Task {
+                await persistProgressIfNeeded(forceSavePosition: true, ended: true)
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase != .active else { return }
+            playbackController.pause()
+            Task {
+                await persistProgressIfNeeded(forceSavePosition: true, ended: false)
+            }
+        }
         .onDisappear {
             playbackController.pause()
+            Task {
+                await persistProgressIfNeeded(forceSavePosition: true, ended: false)
+            }
         }
     }
 }
@@ -63,12 +89,12 @@ private extension AudioNotesDetailView {
                 .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(content.topBarLabel)
+                    Text(viewModel.content?.topBarLabel ?? "AUDIO NOTES")
                         .font(AppTypography.audioNotesDetailTopBarLabel)
                         .tracking(1.0)
                         .foregroundStyle(QuickRevisionPalette.brand)
 
-                    Text(content.topBarTitle)
+                    Text(viewModel.content?.topBarTitle ?? note.subjectName)
                         .font(AppTypography.audioNotesDetailTopBarTitle)
                         .foregroundStyle(QuickRevisionPalette.ink)
                         .padding(.top, 1)
@@ -82,15 +108,55 @@ private extension AudioNotesDetailView {
         }
     }
 
+    @ViewBuilder
+    var statusSection: some View {
+        if viewModel.isLoading && viewModel.content == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading audio note...")
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(viewModel.errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+
+                Button("Retry") {
+                    Task {
+                        await loadContent()
+                    }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(QuickRevisionPalette.brand)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if !viewModel.errorMessage.isEmpty {
+            Text(viewModel.errorMessage)
+                .font(.footnote)
+                .foregroundStyle(SubjectsPalette.resultIncorrect)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if viewModel.isSavingProgress {
+            Text("Saving listening progress...")
+                .font(.footnote)
+                .foregroundStyle(QuickRevisionPalette.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     var playerCard: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        let content = viewModel.content
+
+        return VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(content.lessonTitle)
+                Text(content?.lessonTitle ?? note.title)
                     .font(AppTypography.audioNotesDetailLessonTitle)
                     .tracking(-0.6)
                     .foregroundStyle(QuickRevisionPalette.ink)
 
-                Text(content.summary)
+                Text(content?.summary ?? (note.description ?? "Listen to a concise revision summary for this topic."))
                     .font(AppTypography.audioNotesDetailLessonBody)
                     .foregroundStyle(QuickRevisionPalette.muted)
                     .lineSpacing(2)
@@ -102,6 +168,12 @@ private extension AudioNotesDetailView {
                 .padding(.top, 8)
 
             progressSection
+
+            if let content, !playbackController.isAudioAvailable {
+                Text(content.audioUnavailableMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+            }
 
             playbackControls
                 .padding(.top, 4)
@@ -120,7 +192,7 @@ private extension AudioNotesDetailView {
     var waveformSection: some View {
         TimelineView(.animation(minimumInterval: 0.067, paused: !playbackController.isPlaying)) { timeline in
             HStack(alignment: .center, spacing: 0) {
-                ForEach(Array(content.waveformBars.enumerated()), id: \.element.id) { index, bar in
+                ForEach(Array((viewModel.content?.waveformBars ?? []).enumerated()), id: \.element.id) { index, bar in
                     Capsule(style: .continuous)
                         .fill(color(for: bar.tone))
                         .frame(width: 6, height: animatedHeight(for: bar, index: index, time: timeline.date.timeIntervalSinceReferenceDate))
@@ -175,7 +247,7 @@ private extension AudioNotesDetailView {
 
     var playbackControls: some View {
         HStack {
-            Text(content.playbackSpeedLabel)
+            Text(viewModel.content?.playbackSpeedLabel ?? "1x")
                 .font(AppTypography.audioNotesDetailSpeedLabel)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .frame(minWidth: 48, alignment: .leading)
@@ -183,7 +255,7 @@ private extension AudioNotesDetailView {
             Spacer(minLength: 20)
 
             HStack(spacing: 32) {
-                playbackIconButton(systemName: "gobackward.10") {
+                playbackIconButton(systemName: "gobackward.10", disabled: !playbackController.isAudioAvailable) {
                     playbackController.seek(by: -10)
                 }
                 Button {
@@ -208,14 +280,15 @@ private extension AudioNotesDetailView {
                     }
                 }
                 .buttonStyle(.plain)
-                playbackIconButton(systemName: "goforward.10") {
+                .disabled(!playbackController.isAudioAvailable)
+                playbackIconButton(systemName: "goforward.10", disabled: !playbackController.isAudioAvailable) {
                     playbackController.seek(by: 10)
                 }
             }
 
             Spacer(minLength: 20)
 
-            playbackIconButton(systemName: "list.bullet") {
+            playbackIconButton(systemName: "list.bullet", disabled: true) {
             }
         }
     }
@@ -228,14 +301,15 @@ private extension AudioNotesDetailView {
         (scrubProgress ?? playbackController.progress) * playbackController.duration
     }
 
-    func playbackIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+    func playbackIconButton(systemName: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(QuickRevisionPalette.muted)
+                .foregroundStyle(disabled ? QuickRevisionPalette.muted.opacity(0.4) : QuickRevisionPalette.muted)
                 .frame(width: 36, height: 36)
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     func color(for tone: AudioNotesDetailContent.WaveformBar.Tone) -> Color {
@@ -293,6 +367,94 @@ private extension AudioNotesDetailView {
         let minutes = totalSeconds / 60
         let remainingSeconds = totalSeconds % 60
         return String(format: "%02d:%02d", minutes, remainingSeconds)
+    }
+
+    func loadContent() async {
+        await viewModel.load(note: note)
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+            return
+        }
+
+        guard let content = viewModel.content else { return }
+        playbackController.configure(
+            sourceURL: content.audioURL,
+            initialElapsed: Double(content.elapsedSeconds),
+            initialDuration: Double(content.totalSeconds),
+            playbackRate: Float(content.playbackSpeed)
+        )
+        lastSavedPositionSeconds = content.elapsedSeconds
+        listeningStartedAt = nil
+        pendingListenedSeconds = 0
+        hasConfiguredPlayer = true
+        didSaveCompletion = false
+    }
+
+    func handlePlaybackStateChange(oldValue: Bool, isPlaying: Bool) {
+        guard hasConfiguredPlayer else { return }
+
+        if isPlaying {
+            if listeningStartedAt == nil {
+                listeningStartedAt = Date()
+            }
+            return
+        }
+
+        guard oldValue else { return }
+        accumulateListeningTime()
+
+        let reachedEnd = playbackController.duration > 0 && playbackController.currentTime >= playbackController.duration - 0.5
+        guard !reachedEnd else { return }
+
+        Task {
+            await persistProgressIfNeeded(forceSavePosition: true, ended: false)
+        }
+    }
+
+    func accumulateListeningTime() {
+        guard let startedAt = listeningStartedAt else { return }
+        pendingListenedSeconds += max(Date().timeIntervalSince(startedAt), 0)
+        listeningStartedAt = nil
+    }
+
+    func persistProgressIfNeeded(forceSavePosition: Bool, ended: Bool) async {
+        guard hasConfiguredPlayer, let content = viewModel.content else { return }
+        guard !(ended && didSaveCompletion) else { return }
+
+        accumulateListeningTime()
+
+        let positionSeconds = max(Int(playbackController.currentTime.rounded(.down)), 0)
+        let listenedSeconds = max(Int(pendingListenedSeconds.rounded()), 0)
+        let positionChanged = abs(positionSeconds - lastSavedPositionSeconds) >= 5
+        let shouldCreateStudySession = ended || listenedSeconds >= 30
+        let shouldSend = ended || shouldCreateStudySession || (forceSavePosition && positionChanged)
+
+        guard shouldSend else { return }
+
+        let durationMinutes = shouldCreateStudySession ? max(Int(ceil(Double(max(listenedSeconds, ended ? 1 : 0)) / 60.0)), 1) : 0
+        let didSave = await viewModel.saveProgress(
+            noteID: content.id,
+            lastPositionSeconds: ended ? content.totalSeconds : positionSeconds,
+            playbackSpeed: content.playbackSpeed,
+            durationMinutes: durationMinutes,
+            ended: ended
+        )
+
+        if viewModel.requiresSignOut {
+            session.signOut()
+            return
+        }
+
+        guard didSave else { return }
+
+        if ended || durationMinutes > 0 {
+            refreshCenter.didRecordStudyActivity()
+        }
+
+        pendingListenedSeconds = 0
+        lastSavedPositionSeconds = ended ? 0 : positionSeconds
+        didSaveCompletion = ended
     }
 }
 

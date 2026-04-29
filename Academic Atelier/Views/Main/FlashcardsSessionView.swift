@@ -2,35 +2,13 @@ import SwiftUI
 
 struct FlashcardsSessionView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: SessionViewModel
+    @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
-    private let content: FlashcardsSessionContent
-
-    @State private var currentIndex = 0
-    @State private var isRevealed = false
+    @StateObject private var viewModel: FlashcardsSessionViewModel
 
     init(content: FlashcardsSessionContent) {
-        self.content = content
-    }
-
-    private var currentCard: FlashcardsSessionContent.Card {
-        content.cards[currentIndex]
-    }
-
-    private var totalCards: Int {
-        content.cards.count
-    }
-
-    private var displayedCardNumber: Int {
-        min(currentIndex + 1, totalCards)
-    }
-
-    private var cardsRemaining: Int {
-        max(totalCards - displayedCardNumber, 0)
-    }
-
-    private var progressValue: CGFloat {
-        guard totalCards > 0 else { return 0 }
-        return CGFloat(displayedCardNumber) / CGFloat(totalCards)
+        _viewModel = StateObject(wrappedValue: FlashcardsSessionViewModel(content: content))
     }
 
     var body: some View {
@@ -40,6 +18,10 @@ struct FlashcardsSessionView: View {
             VStack(spacing: 0) {
                 progressSection
                     .padding(.top, 22)
+                    .padding(.horizontal, 24)
+
+                statusSection
+                    .padding(.top, 12)
                     .padding(.horizontal, 24)
 
                 Spacer(minLength: 20)
@@ -84,7 +66,7 @@ private extension FlashcardsSessionView {
                 }
                 .buttonStyle(.plain)
 
-                Text("FLASHCARDS • \(content.topicTitle.uppercased())")
+                Text("FLASHCARDS • \(viewModel.content.topicTitle.uppercased())")
                     .font(AppTypography.flashcardsSessionTopBarTitle)
                     .tracking(2.0)
                     .foregroundStyle(QuickRevisionPalette.sectionLabel)
@@ -108,7 +90,7 @@ private extension FlashcardsSessionView {
 
                 Spacer(minLength: 12)
 
-                Text("Card \(displayedCardNumber.formatted(.number.precision(.integerLength(2)))) of \(totalCards)")
+                Text(progressText)
                     .font(AppTypography.flashcardsSessionProgressValue)
                     .foregroundStyle(QuickRevisionPalette.ink)
             }
@@ -119,14 +101,40 @@ private extension FlashcardsSessionView {
                     .overlay(alignment: .leading) {
                         Capsule(style: .continuous)
                             .fill(QuickRevisionPalette.brand)
-                            .frame(width: proxy.size.width * progressValue)
+                            .frame(width: proxy.size.width * viewModel.progressValue)
                     }
             }
             .frame(height: 8)
         }
     }
 
+    @ViewBuilder
+    var statusSection: some View {
+        if !viewModel.errorMessage.isEmpty {
+            Text(viewModel.errorMessage)
+                .font(.footnote)
+                .foregroundStyle(SubjectsPalette.resultIncorrect)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if viewModel.isSubmitting {
+            Text("Saving response...")
+                .font(.footnote)
+                .foregroundStyle(QuickRevisionPalette.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
     var flashcardSection: some View {
+        if viewModel.isCompleted {
+            completionCard
+        } else if let currentCard = viewModel.currentCard {
+            activeCard(currentCard)
+        } else {
+            emptyCard
+        }
+    }
+
+    func activeCard(_ currentCard: FlashcardsSessionContent.Card) -> some View {
         VStack(alignment: .center, spacing: 22) {
             VStack(spacing: 10) {
                 Text(currentCard.frontLabel)
@@ -146,7 +154,7 @@ private extension FlashcardsSessionView {
                     .lineLimit(4)
             }
 
-            if isRevealed {
+            if viewModel.isRevealed {
                 Text(currentCard.backText)
                     .font(AppTypography.flashcardsSessionBackText)
                     .foregroundStyle(QuickRevisionPalette.muted)
@@ -167,7 +175,7 @@ private extension FlashcardsSessionView {
                     }
 
                     Button {
-                        isRevealed = true
+                        viewModel.revealAnswer()
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "eye")
@@ -199,8 +207,66 @@ private extension FlashcardsSessionView {
         .shadow(color: FlashcardsSessionPalette.cardShadow, radius: 16, x: 0, y: 10)
     }
 
+    var completionCard: some View {
+        VStack(alignment: .center, spacing: 24) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 48, weight: .medium))
+                .foregroundStyle(QuickRevisionPalette.brand)
+
+            Text("Session Complete")
+                .font(AppTypography.flashcardsSessionFrontText)
+                .foregroundStyle(QuickRevisionPalette.ink)
+
+            Text(viewModel.content.completionMessage)
+                .font(AppTypography.flashcardsSessionBackText)
+                .foregroundStyle(QuickRevisionPalette.muted)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 16) {
+                statPill(title: "KNOW THIS", value: "\(viewModel.knownCount)")
+                statPill(title: "REVIEW AGAIN", value: "\(viewModel.reviewAgainCount)")
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 420)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 32)
+        .background(AppColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: FlashcardsSessionPalette.cardShadow, radius: 16, x: 0, y: 10)
+    }
+
+    var emptyCard: some View {
+        VStack(spacing: 16) {
+            Text("No flashcards available yet.")
+                .font(AppTypography.flashcardsSessionBackText)
+                .foregroundStyle(QuickRevisionPalette.muted)
+        }
+        .frame(maxWidth: .infinity, minHeight: 420)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 32)
+        .background(AppColors.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    func statPill(title: String, value: String) -> some View {
+        VStack(spacing: 8) {
+            Text(value)
+                .font(AppTypography.flashcardsSessionFrontText)
+                .foregroundStyle(QuickRevisionPalette.ink)
+
+            Text(title)
+                .font(AppTypography.flashcardsSessionRemainingBadge)
+                .tracking(1.2)
+                .foregroundStyle(QuickRevisionPalette.sectionLabel)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background(FlashcardsSessionPalette.remainingBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
     var remainingBadge: some View {
-        Text("\(cardsRemaining) CARDS REMAINING")
+        Text(remainingText)
             .font(AppTypography.flashcardsSessionRemainingBadge)
             .tracking(2.0)
             .foregroundStyle(QuickRevisionPalette.sectionLabel)
@@ -210,29 +276,64 @@ private extension FlashcardsSessionView {
             .clipShape(Capsule(style: .continuous))
     }
 
+    @ViewBuilder
     var bottomActions: some View {
-        HStack(spacing: 14) {
+        if viewModel.isCompleted {
             SessionActionButton(
-                title: "REVIEW AGAIN",
-                iconName: "arrow.counterclockwise",
-                style: .secondary,
-                action: advanceToNextCard
-            )
-
-            SessionActionButton(
-                title: "KNOW THIS",
+                title: "DONE",
                 iconName: "checkmark",
-                style: .primary,
-                action: advanceToNextCard
-            )
+                style: .primary
+            ) {
+                dismiss()
+            }
+        } else {
+            HStack(spacing: 14) {
+                SessionActionButton(
+                    title: "REVIEW AGAIN",
+                    iconName: "arrow.counterclockwise",
+                    style: .secondary
+                ) {
+                    Task {
+                        let didComplete = await viewModel.respondCurrentCard(as: .reviewAgain)
+                        handleResponseCompletion(didComplete)
+                    }
+                }
+
+                SessionActionButton(
+                    title: "KNOW THIS",
+                    iconName: "checkmark",
+                    style: .primary
+                ) {
+                    Task {
+                        let didComplete = await viewModel.respondCurrentCard(as: .knowThis)
+                        handleResponseCompletion(didComplete)
+                    }
+                }
+            }
+            .disabled(viewModel.isSubmitting || viewModel.currentCard == nil)
         }
     }
 
-    func advanceToNextCard() {
-        guard totalCards > 0 else { return }
-        if currentIndex < totalCards - 1 {
-            currentIndex += 1
-            isRevealed = false
+    var progressText: String {
+        guard viewModel.totalCards > 0 else { return "No cards" }
+        if viewModel.isCompleted {
+            return "Complete"
+        }
+        return "Card \(viewModel.displayedCardNumber.formatted(.number.precision(.integerLength(2)))) of \(viewModel.totalCards)"
+    }
+
+    var remainingText: String {
+        if viewModel.isCompleted {
+            return "SESSION RECORDED"
+        }
+        return "\(viewModel.cardsRemaining) CARDS REMAINING"
+    }
+
+    func handleResponseCompletion(_ didComplete: Bool) {
+        if viewModel.requiresSignOut {
+            session.signOut()
+        } else if didComplete {
+            refreshCenter.didRecordStudyActivity()
         }
     }
 }
