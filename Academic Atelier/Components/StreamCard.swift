@@ -15,6 +15,7 @@ struct StreamCard: View {
 
                 Image(systemName: "chevron.right")
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
             .padding()
             .background(AppColors.cardBackground)
@@ -26,5 +27,9 @@ struct StreamCard: View {
                 y: 4
             )
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityHint("Open this stream.")
     }
 }

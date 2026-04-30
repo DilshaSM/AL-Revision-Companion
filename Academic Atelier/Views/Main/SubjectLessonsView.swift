@@ -6,9 +6,15 @@ struct SubjectLessonsView: View {
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
     @StateObject private var viewModel: SubjectLessonsViewModel
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let subject: SubjectsTabContent.Subject
     private let actions: SubjectLessonsActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(subject: SubjectsTabContent.Subject, actions: SubjectLessonsActions = .init()) {
         self.subject = subject
@@ -47,6 +53,16 @@ struct SubjectLessonsView: View {
         .task(id: refreshCenter.subjectsToken) {
             await load(forceRefresh: viewModel.content != nil)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -69,11 +85,15 @@ private extension SubjectLessonsView {
                         .frame(width: 16, height: 16)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Go back")
+                .accessibilityHint("Return to the subjects screen.")
 
                 Text(viewModel.content?.title ?? subject.title)
                     .font(AppTypography.subjectLessonsTopBarTitle)
                     .tracking(-0.6)
                     .foregroundStyle(SubjectsPalette.ink)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Spacer(minLength: 0)
             }
@@ -92,6 +112,9 @@ private extension SubjectLessonsView {
                     .font(.footnote)
                     .foregroundStyle(SubjectsPalette.muted)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading subject lessons.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -106,6 +129,8 @@ private extension SubjectLessonsView {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(SubjectsPalette.brand)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -132,6 +157,7 @@ private extension SubjectLessonsView {
                 .foregroundStyle(.white.opacity(0.08))
                 .offset(x: 18, y: 18)
                 .padding(.trailing, -10)
+                .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, minHeight: 216, alignment: .topLeading)
         .overlay(alignment: .topLeading) {
@@ -159,6 +185,7 @@ private extension SubjectLessonsView {
                             }
                     }
                     .frame(height: 4)
+                    .accessibilityHidden(true)
 
                     Text(content.hero.progressText)
                         .font(AppTypography.subjectLessonsHeroProgress)
@@ -195,12 +222,16 @@ private extension SubjectLessonsView {
                 }
                 .buttonStyle(.plain)
                 .disabled(currentLesson == nil || viewModel.pendingLessonID == currentLesson?.id)
+                .accessibilityLabel(currentLesson == nil ? content.hero.currentLessonTitle : (currentLesson?.title ?? content.hero.currentLessonTitle))
+                .accessibilityValue(viewModel.pendingLessonID == currentLesson?.id ? "Opening lesson" : "Current lesson")
+                .accessibilityHint("Open the current lesson quiz.")
                 .padding(.top, 32)
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 28)
         }
         .shadow(color: SubjectsPalette.brand.opacity(0.20), radius: 50, x: 0, y: 25)
+        .accessibilityElement(children: .contain)
     }
 
     func unitsSection(content: SubjectLessonsContent) -> some View {
@@ -212,6 +243,7 @@ private extension SubjectLessonsView {
                             .font(AppTypography.subjectLessonsUnitTitle)
                             .tracking(1.65)
                             .foregroundStyle(SubjectsPalette.muted.opacity(0.8))
+                            .accessibilityHeader()
 
                         Spacer(minLength: 12)
 
@@ -316,7 +348,9 @@ private struct SubjectLessonRow: View {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(SubjectsPalette.lockedForeground)
+                                .accessibilityHidden(true)
                         }
+                        .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(lesson.title)
@@ -335,6 +369,10 @@ private struct SubjectLessonRow: View {
                 .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
                 .background(SubjectsPalette.surfaceMuted.opacity(0.25))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(lesson.title)
+                .accessibilityValue(detailText)
+                .accessibilityHint("This lesson is locked.")
             }
         }
     }
@@ -343,10 +381,12 @@ private struct SubjectLessonRow: View {
         Group {
             if isPending {
                 ProgressView()
+                    .accessibilityHidden(true)
             } else {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(SubjectsPalette.lockedForeground)
+                    .accessibilityHidden(true)
             }
         }
     }
@@ -371,11 +411,14 @@ private struct SubjectLessonRow: View {
                             Image(systemName: iconName)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(iconTint)
+                                .accessibilityHidden(true)
                         } else {
                             ProgressView()
                                 .tint(iconTint)
+                                .accessibilityHidden(true)
                         }
                     }
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: progress == nil ? 2 : 14) {
                     Text(title)
@@ -395,6 +438,7 @@ private struct SubjectLessonRow: View {
                                     }
                             }
                             .frame(width: 140, height: 6)
+                            .accessibilityHidden(true)
 
                             Text(detailText.uppercased())
                                 .font(AppTypography.subjectLessonsInProgressValue)
@@ -420,5 +464,17 @@ private struct SubjectLessonRow: View {
         .buttonStyle(.plain)
         .disabled(isPending || !lesson.canStart)
         .opacity(lesson.canStart ? 1 : 0.7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityValue(detailText: detailText, progress: progress))
+        .accessibilityHint(isPending ? "This lesson is opening." : "Open this lesson.")
+    }
+
+    private func accessibilityValue(detailText: String, progress: Double?) -> String {
+        if let progress {
+            return "\(detailText). \(Int((min(max(progress, 0), 1) * 100).rounded())) percent complete."
+        }
+
+        return detailText
     }
 }
