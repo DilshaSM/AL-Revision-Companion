@@ -5,9 +5,15 @@ struct ReviewAnswersView: View {
     @EnvironmentObject private var session: SessionViewModel
 
     @StateObject private var viewModel = ReviewAnswersViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let result: QuizResultContent
     private let actions: ReviewAnswersActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(result: QuizResultContent, actions: ReviewAnswersActions = .init()) {
         self.result = result
@@ -44,6 +50,16 @@ struct ReviewAnswersView: View {
         .refreshable {
             await loadReview(forceRefresh: true)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -59,11 +75,15 @@ private extension ReviewAnswersView {
                     .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Go back")
+            .accessibilityHint("Return to quiz results.")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Review Answers")
                     .font(AppTypography.subjectQuizReviewTopBarTitle)
                     .foregroundStyle(SubjectsPalette.ink)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Text((viewModel.review?.subtitle ?? "Loading review").uppercased())
                     .font(AppTypography.subjectQuizReviewTopBarSubtitle)
@@ -112,6 +132,9 @@ private extension ReviewAnswersView {
             .frame(height: 8)
         }
         .padding(.horizontal, 18)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Quiz review summary for \(result.subjectTitle).")
+        .accessibilityValue("Score \(viewModel.review?.scoreText ?? result.scoreText).")
     }
 
     @ViewBuilder
@@ -124,6 +147,9 @@ private extension ReviewAnswersView {
                     .foregroundStyle(SubjectsPalette.muted)
             }
             .padding(.horizontal, 18)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading review.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -139,6 +165,8 @@ private extension ReviewAnswersView {
                 .foregroundStyle(SubjectsPalette.brand)
             }
             .padding(.horizontal, 18)
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -170,6 +198,9 @@ private extension ReviewAnswersView {
                 .stroke(SubjectsPalette.reviewRecommendationStroke, lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Improve your score.")
+        .accessibilityValue(review.recommendationText)
     }
 
     var bottomBar: some View {
@@ -185,6 +216,7 @@ private extension ReviewAnswersView {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Return to the quiz results screen.")
 
             Button {
                 actions.onTapNextTopic()
@@ -198,6 +230,7 @@ private extension ReviewAnswersView {
             }
             .buttonStyle(.plain)
             .disabled(result.nextLesson == nil)
+            .accessibilityHint(result.nextLesson == nil ? "No next topic is available yet." : "Open the next topic.")
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)
@@ -275,6 +308,9 @@ private struct ReviewAnswerCard: View {
         .padding(.vertical, 20)
         .background(AppColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Question \(question.index). \(question.isCorrect ? "Correct" : "Incorrect"). \(question.prompt)")
+        .accessibilityValue(reviewSummary)
     }
 
     var statusPill: some View {
@@ -290,6 +326,7 @@ private struct ReviewAnswerCard: View {
         .padding(.vertical, 4)
         .background(question.isCorrect ? SubjectsPalette.resultCorrectBackground : SubjectsPalette.resultIncorrectBackground)
         .clipShape(Capsule())
+        .accessibilityHidden(true)
     }
 
     func answerBlock(
@@ -305,6 +342,7 @@ private struct ReviewAnswerCard: View {
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(iconTint)
                 .padding(.top, 3)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(label)
@@ -323,5 +361,13 @@ private struct ReviewAnswerCard: View {
         .padding(16)
         .background(background)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    var reviewSummary: String {
+        if question.isCorrect {
+            return "Your answer: \(question.yourAnswer). Explanation: \(question.explanation)"
+        }
+
+        return "Your answer: \(question.yourAnswer). Correct answer: \(question.correctAnswer). Explanation: \(question.explanation)"
     }
 }

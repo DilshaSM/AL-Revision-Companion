@@ -5,8 +5,14 @@ struct AudioNotesTopicSelectionView: View {
     @EnvironmentObject private var session: SessionViewModel
 
     @StateObject private var viewModel = AudioNotesTopicSelectionViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let actions: AudioNotesTopicSelectionActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(actions: AudioNotesTopicSelectionActions = .init()) {
         self.actions = actions
@@ -37,6 +43,16 @@ struct AudioNotesTopicSelectionView: View {
         .refreshable {
             await load(forceRefresh: true)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -58,6 +74,8 @@ private extension AudioNotesTopicSelectionView {
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Go back")
+            .accessibilityHint("Return to the previous screen.")
             .padding(.leading, 24)
             .padding(.top, 48)
             .padding(.bottom, 16)
@@ -70,6 +88,8 @@ private extension AudioNotesTopicSelectionView {
                 .font(AppTypography.audioNotesTopicSelectionTitle)
                 .tracking(-0.9)
                 .foregroundStyle(QuickRevisionPalette.ink)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text(viewModel.content?.subtitle ?? "Choose a topic to start an audio revision session.")
                 .font(AppTypography.audioNotesTopicSelectionSubtitle)
@@ -87,6 +107,9 @@ private extension AudioNotesTopicSelectionView {
                     .font(.footnote)
                     .foregroundStyle(QuickRevisionPalette.muted)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading audio notes.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -101,14 +124,18 @@ private extension AudioNotesTopicSelectionView {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(QuickRevisionPalette.brand)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty {
             Text(viewModel.errorMessage)
                 .font(.footnote)
                 .foregroundStyle(SubjectsPalette.resultIncorrect)
+                .accessibilityFocused($focusedElement, equals: .status)
         } else if viewModel.isLoading {
             Text("Refreshing audio notes...")
                 .font(.footnote)
                 .foregroundStyle(QuickRevisionPalette.muted)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -118,6 +145,7 @@ private extension AudioNotesTopicSelectionView {
                 .font(AppTypography.audioNotesTopicSelectionSectionLabel)
                 .tracking(1.6)
                 .foregroundStyle(QuickRevisionPalette.sectionLabel)
+                .accessibilityHeader()
 
             if let content = viewModel.content, content.availableTopics.isEmpty {
                 Text(content.emptyStateMessage)
@@ -163,7 +191,9 @@ private struct AudioNotesTopicRow: View {
                     Image(systemName: topic.symbolName)
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(AudioNotesPalette.iconAccent)
+                        .accessibilityHidden(true)
                 }
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(topic.title)
@@ -191,6 +221,7 @@ private struct AudioNotesTopicRow: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(QuickRevisionPalette.chevron)
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
@@ -198,6 +229,10 @@ private struct AudioNotesTopicRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(topic.title)
+        .accessibilityValue(topic.detailText)
+        .accessibilityHint("Open this audio note.")
     }
 }
 

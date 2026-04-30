@@ -17,6 +17,12 @@ struct AudioNotesDetailView: View {
     @State private var lastSavedPositionSeconds = 0
     @State private var hasConfiguredPlayer = false
     @State private var didSaveCompletion = false
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(note: AudioNotesTopicSelectionContent.Note) {
         self.note = note
@@ -42,11 +48,28 @@ struct AudioNotesDetailView: View {
         .task(id: note.id) {
             await loadContent()
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
         .onChange(of: playbackController.isPlaying) { oldValue, isPlaying in
             handlePlaybackStateChange(oldValue: oldValue, isPlaying: isPlaying)
+            guard hasConfiguredPlayer else { return }
+            Task { @MainActor in
+                AccessibilitySupport.announce(isPlaying ? "Playback started." : "Playback paused.")
+            }
         }
         .onChange(of: playbackController.completionToken) { _, _ in
             guard hasConfiguredPlayer, playbackController.currentTime >= playbackController.duration else { return }
+            Task { @MainActor in
+                AccessibilitySupport.announce("Audio note finished.")
+            }
 
             Task {
                 await persistProgressIfNeeded(forceSavePosition: true, ended: true)
@@ -87,6 +110,8 @@ private extension AudioNotesDetailView {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Go back")
+                .accessibilityHint("Return to the audio notes list.")
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(viewModel.content?.topBarLabel ?? "AUDIO NOTES")
@@ -98,6 +123,8 @@ private extension AudioNotesDetailView {
                         .font(AppTypography.audioNotesDetailTopBarTitle)
                         .foregroundStyle(QuickRevisionPalette.ink)
                         .padding(.top, 1)
+                        .accessibilityHeader()
+                        .accessibilityFocused($focusedElement, equals: .title)
                 }
 
                 Spacer(minLength: 0)
@@ -118,6 +145,9 @@ private extension AudioNotesDetailView {
                     .foregroundStyle(QuickRevisionPalette.muted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading audio note.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -133,16 +163,20 @@ private extension AudioNotesDetailView {
                 .foregroundStyle(QuickRevisionPalette.brand)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty {
             Text(viewModel.errorMessage)
                 .font(.footnote)
                 .foregroundStyle(SubjectsPalette.resultIncorrect)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityFocused($focusedElement, equals: .status)
         } else if viewModel.isSavingProgress {
             Text("Saving listening progress...")
                 .font(.footnote)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -173,6 +207,7 @@ private extension AudioNotesDetailView {
                 Text(content.audioUnavailableMessage)
                     .font(.footnote)
                     .foregroundStyle(SubjectsPalette.resultIncorrect)
+                    .accessibilityFocused($focusedElement, equals: .status)
             }
 
             playbackControls
@@ -187,6 +222,7 @@ private extension AudioNotesDetailView {
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: AudioNotesDetailPalette.cardShadow, radius: 24, x: 0, y: 4)
+        .accessibilityElement(children: .contain)
     }
 
     var waveformSection: some View {
@@ -201,6 +237,7 @@ private extension AudioNotesDetailView {
             }
         }
         .frame(height: 96, alignment: .center)
+        .accessibilityHidden(true)
     }
 
     var progressSection: some View {
@@ -243,6 +280,20 @@ private extension AudioNotesDetailView {
                     .foregroundStyle(QuickRevisionPalette.muted)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Playback position")
+        .accessibilityValue("\(formatAccessibilityTime(displayedElapsedTime)) elapsed of \(formatAccessibilityTime(playbackController.duration)).")
+        .accessibilityHint("Adjust to scrub through the audio note.")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                playbackController.seek(by: 10)
+            case .decrement:
+                playbackController.seek(by: -10)
+            @unknown default:
+                break
+            }
+        }
     }
 
     var playbackControls: some View {
@@ -251,6 +302,8 @@ private extension AudioNotesDetailView {
                 .font(AppTypography.audioNotesDetailSpeedLabel)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .frame(minWidth: 48, alignment: .leading)
+                .accessibilityLabel("Playback speed")
+                .accessibilityValue(viewModel.content?.playbackSpeedLabel ?? "1x")
 
             Spacer(minLength: 20)
 
@@ -281,6 +334,8 @@ private extension AudioNotesDetailView {
                 }
                 .buttonStyle(.plain)
                 .disabled(!playbackController.isAudioAvailable)
+                .accessibilityLabel(playbackController.isPlaying ? "Pause audio" : "Play audio")
+                .accessibilityHint("Toggle playback.")
                 playbackIconButton(systemName: "goforward.10", disabled: !playbackController.isAudioAvailable) {
                     playbackController.seek(by: 10)
                 }
@@ -290,6 +345,7 @@ private extension AudioNotesDetailView {
 
             playbackIconButton(systemName: "list.bullet", disabled: true) {
             }
+            .accessibilityHidden(true)
         }
     }
 
@@ -310,6 +366,8 @@ private extension AudioNotesDetailView {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
+        .accessibilityLabel(accessibilityLabel(for: systemName))
+        .accessibilityHint(accessibilityHint(for: systemName))
     }
 
     func color(for tone: AudioNotesDetailContent.WaveformBar.Tone) -> Color {
@@ -367,6 +425,50 @@ private extension AudioNotesDetailView {
         let minutes = totalSeconds / 60
         let remainingSeconds = totalSeconds % 60
         return String(format: "%02d:%02d", minutes, remainingSeconds)
+    }
+
+    func formatAccessibilityTime(_ seconds: Double) -> String {
+        let totalSeconds = max(Int(seconds.rounded(.down)), 0)
+        let minutes = totalSeconds / 60
+        let remainingSeconds = totalSeconds % 60
+
+        if minutes == 0 {
+            return "\(remainingSeconds) seconds"
+        }
+
+        if remainingSeconds == 0 {
+            return minutes == 1 ? "1 minute" : "\(minutes) minutes"
+        }
+
+        let minuteText = minutes == 1 ? "1 minute" : "\(minutes) minutes"
+        let secondText = remainingSeconds == 1 ? "1 second" : "\(remainingSeconds) seconds"
+        return "\(minuteText) \(secondText)"
+    }
+
+    func accessibilityLabel(for systemName: String) -> String {
+        switch systemName {
+        case "gobackward.10":
+            return "Rewind 10 seconds"
+        case "goforward.10":
+            return "Forward 10 seconds"
+        case "list.bullet":
+            return "Audio note details"
+        default:
+            return "Audio control"
+        }
+    }
+
+    func accessibilityHint(for systemName: String) -> String {
+        switch systemName {
+        case "gobackward.10":
+            return "Move playback back by ten seconds."
+        case "goforward.10":
+            return "Move playback forward by ten seconds."
+        case "list.bullet":
+            return "Additional details are unavailable here."
+        default:
+            return ""
+        }
     }
 
     func loadContent() async {
@@ -478,6 +580,7 @@ private struct DecorativeOverlay: View {
                 .offset(x: 14, y: 34)
         }
         .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

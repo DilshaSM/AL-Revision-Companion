@@ -6,6 +6,14 @@ struct FlashcardsSessionView: View {
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
     @StateObject private var viewModel: FlashcardsSessionViewModel
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+        case card
+        case completion
+    }
 
     init(content: FlashcardsSessionContent) {
         _viewModel = StateObject(wrappedValue: FlashcardsSessionViewModel(content: content))
@@ -43,6 +51,37 @@ struct FlashcardsSessionView: View {
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
+        .onChange(of: viewModel.currentIndex) { _, newValue in
+            guard !viewModel.isCompleted else { return }
+            focusedElement = .card
+            Task { @MainActor in
+                AccessibilitySupport.announce("Card \(newValue + 1) of \(viewModel.totalCards).")
+            }
+        }
+        .onChange(of: viewModel.isRevealed) { _, isRevealed in
+            guard isRevealed, let currentCard = viewModel.currentCard else { return }
+            focusedElement = .card
+            Task { @MainActor in
+                AccessibilitySupport.announce("Answer revealed. \(currentCard.backText)")
+            }
+        }
+        .onChange(of: viewModel.isCompleted) { _, isCompleted in
+            guard isCompleted else { return }
+            focusedElement = .completion
+            Task { @MainActor in
+                AccessibilitySupport.announce("Flashcard session complete. Known this \(viewModel.knownCount). Review again \(viewModel.reviewAgainCount).")
+            }
+        }
     }
 }
 
@@ -65,12 +104,16 @@ private extension FlashcardsSessionView {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Go back")
+                .accessibilityHint("Return to the previous screen.")
 
                 Text("FLASHCARDS • \(viewModel.content.topicTitle.uppercased())")
                     .font(AppTypography.flashcardsSessionTopBarTitle)
                     .tracking(2.0)
                     .foregroundStyle(QuickRevisionPalette.sectionLabel)
                     .lineLimit(1)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Spacer(minLength: 0)
             }
@@ -105,7 +148,11 @@ private extension FlashcardsSessionView {
                     }
             }
             .frame(height: 8)
+            .accessibilityHidden(true)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Session progress")
+        .accessibilityValue(progressText)
     }
 
     @ViewBuilder
@@ -115,11 +162,13 @@ private extension FlashcardsSessionView {
                 .font(.footnote)
                 .foregroundStyle(SubjectsPalette.resultIncorrect)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityFocused($focusedElement, equals: .status)
         } else if viewModel.isSubmitting {
             Text("Saving response...")
                 .font(.footnote)
                 .foregroundStyle(QuickRevisionPalette.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -145,6 +194,7 @@ private extension FlashcardsSessionView {
                 Capsule(style: .continuous)
                     .fill(FlashcardsSessionPalette.cardEyebrow.opacity(0.35))
                     .frame(width: 36, height: 4)
+                    .accessibilityHidden(true)
 
                 Text(currentCard.frontText)
                     .font(AppTypography.flashcardsSessionFrontText)
@@ -153,6 +203,10 @@ private extension FlashcardsSessionView {
                     .minimumScaleFactor(0.85)
                     .lineLimit(4)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(currentCard.frontLabel)
+            .accessibilityValue(currentCard.frontText)
+            .accessibilityFocused($focusedElement, equals: .card)
 
             if viewModel.isRevealed {
                 Text(currentCard.backText)
@@ -161,18 +215,23 @@ private extension FlashcardsSessionView {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 18)
+                    .accessibilityLabel("Answer. \(currentCard.backText)")
             } else {
                 VStack(spacing: 14) {
                     HStack(spacing: 10) {
                         Image(systemName: "questionmark.circle")
                             .font(.system(size: 18, weight: .regular))
                             .foregroundStyle(FlashcardsSessionPalette.hintIcon)
+                            .accessibilityHidden(true)
 
                         Text(currentCard.hintText)
                             .font(AppTypography.flashcardsSessionHint)
                             .foregroundStyle(FlashcardsSessionPalette.hintText)
                             .multilineTextAlignment(.center)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Hint")
+                    .accessibilityValue(currentCard.hintText)
 
                     Button {
                         viewModel.revealAnswer()
@@ -180,6 +239,7 @@ private extension FlashcardsSessionView {
                         HStack(spacing: 12) {
                             Image(systemName: "eye")
                                 .font(.system(size: 18, weight: .medium))
+                                .accessibilityHidden(true)
 
                             Text("TAP TO REVEAL")
                                 .font(AppTypography.flashcardsSessionRevealButton)
@@ -196,6 +256,8 @@ private extension FlashcardsSessionView {
                         .clipShape(Capsule(style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Reveal answer")
+                    .accessibilityHint("Show the answer for this flashcard.")
                 }
             }
         }
@@ -205,6 +267,7 @@ private extension FlashcardsSessionView {
         .background(AppColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: FlashcardsSessionPalette.cardShadow, radius: 16, x: 0, y: 10)
+        .accessibilityElement(children: .contain)
     }
 
     var completionCard: some View {
@@ -212,6 +275,7 @@ private extension FlashcardsSessionView {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 48, weight: .medium))
                 .foregroundStyle(QuickRevisionPalette.brand)
+                .accessibilityHidden(true)
 
             Text("Session Complete")
                 .font(AppTypography.flashcardsSessionFrontText)
@@ -233,6 +297,10 @@ private extension FlashcardsSessionView {
         .background(AppColors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: FlashcardsSessionPalette.cardShadow, radius: 16, x: 0, y: 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Session complete")
+        .accessibilityValue("\(viewModel.content.completionMessage) Know this \(viewModel.knownCount). Review again \(viewModel.reviewAgainCount).")
+        .accessibilityFocused($focusedElement, equals: .completion)
     }
 
     var emptyCard: some View {
@@ -263,6 +331,9 @@ private extension FlashcardsSessionView {
         .padding(.vertical, 16)
         .background(FlashcardsSessionPalette.remainingBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
     }
 
     var remainingBadge: some View {
@@ -270,10 +341,12 @@ private extension FlashcardsSessionView {
             .font(AppTypography.flashcardsSessionRemainingBadge)
             .tracking(2.0)
             .foregroundStyle(QuickRevisionPalette.sectionLabel)
-            .padding(.horizontal, 20)
-            .frame(height: 40)
-            .background(FlashcardsSessionPalette.remainingBackground)
-            .clipShape(Capsule(style: .continuous))
+        .padding(.horizontal, 20)
+        .frame(height: 40)
+        .background(FlashcardsSessionPalette.remainingBackground)
+        .clipShape(Capsule(style: .continuous))
+        .accessibilityLabel("Cards remaining")
+        .accessibilityValue(remainingText)
     }
 
     @ViewBuilder
@@ -295,7 +368,7 @@ private extension FlashcardsSessionView {
                 ) {
                     Task {
                         let didComplete = await viewModel.respondCurrentCard(as: .reviewAgain)
-                        handleResponseCompletion(didComplete)
+                        handleResponseCompletion(didComplete, responseTitle: "Review again")
                     }
                 }
 
@@ -306,7 +379,7 @@ private extension FlashcardsSessionView {
                 ) {
                     Task {
                         let didComplete = await viewModel.respondCurrentCard(as: .knowThis)
-                        handleResponseCompletion(didComplete)
+                        handleResponseCompletion(didComplete, responseTitle: "Know this")
                     }
                 }
             }
@@ -329,11 +402,15 @@ private extension FlashcardsSessionView {
         return "\(viewModel.cardsRemaining) CARDS REMAINING"
     }
 
-    func handleResponseCompletion(_ didComplete: Bool) {
+    func handleResponseCompletion(_ didComplete: Bool, responseTitle: String) {
         if viewModel.requiresSignOut {
             session.signOut()
         } else if didComplete {
             refreshCenter.didRecordStudyActivity()
+        } else {
+            Task { @MainActor in
+                AccessibilitySupport.announce("\(responseTitle) selected. \(progressText)")
+            }
         }
     }
 }
@@ -354,6 +431,7 @@ private struct SessionActionButton: View {
             HStack(spacing: 10) {
                 Image(systemName: iconName)
                     .font(.system(size: 20, weight: .medium))
+                    .accessibilityHidden(true)
 
                 Text(title)
                     .font(AppTypography.flashcardsSessionActionButton)
@@ -367,6 +445,7 @@ private struct SessionActionButton: View {
             .shadow(color: shadowColor, radius: 12, x: 0, y: 8)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title.capitalized)
     }
 
     private var foregroundColor: Color {

@@ -5,9 +5,15 @@ struct RecommendationsView: View {
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
     @StateObject private var viewModel = RecommendationsViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let preferredSubject: ProgressTabContent.SubjectMastery?
     private let actions: RecommendationsActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(
         preferredSubject: ProgressTabContent.SubjectMastery? = nil,
@@ -38,6 +44,16 @@ struct RecommendationsView: View {
         .refreshable {
             await load(forceRefresh: true)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -57,6 +73,8 @@ private extension RecommendationsView {
                     .font(AppTypography.progressRecommendationsTitle)
                     .tracking(-0.9)
                     .foregroundStyle(ProgressPalette.textPrimary)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Text(content?.summary ?? "Complete a quiz to receive personalized study recommendations.")
                     .font(AppTypography.progressRecommendationsSummary)
@@ -80,6 +98,9 @@ private extension RecommendationsView {
                     .font(.footnote)
                     .foregroundStyle(ProgressPalette.textSecondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading recommendations.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -94,10 +115,13 @@ private extension RecommendationsView {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(ProgressPalette.brand)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if viewModel.isLoading {
             Text("Refreshing recommendations...")
                 .font(.footnote)
                 .foregroundStyle(ProgressPalette.textSecondary)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -106,11 +130,13 @@ private extension RecommendationsView {
             ZStack {
                 Circle()
                     .stroke(ProgressPalette.cardBorder, lineWidth: 6)
+                    .accessibilityHidden(true)
 
                 Circle()
                     .trim(from: 0, to: overview.scoreValue)
                     .stroke(ProgressPalette.brand, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
+                    .accessibilityHidden(true)
 
                 Text(overview.scoreText)
                     .font(AppTypography.progressRecommendationsScoreValue)
@@ -142,6 +168,9 @@ private extension RecommendationsView {
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: ProgressPalette.shadow, radius: 2, y: 1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(overview.title)
+        .accessibilityValue("\(overview.scoreText). \(overview.message)")
     }
 
     @ViewBuilder
@@ -153,6 +182,7 @@ private extension RecommendationsView {
                         .font(AppTypography.progressRecommendationsSectionTitle)
                         .tracking(-0.5)
                         .foregroundStyle(ProgressPalette.textPrimary)
+                        .accessibilityHeader()
 
                     Spacer(minLength: 12)
 
@@ -232,6 +262,9 @@ private struct RecommendationPathwayCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(pathway.title)
+            .accessibilityValue(pathwaySummary)
 
             HStack {
                 if let title = pathway.primaryActionTitle {
@@ -244,6 +277,7 @@ private struct RecommendationPathwayCard: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint("Start this recommended revision path.")
                 }
 
                 Spacer(minLength: 12)
@@ -253,6 +287,7 @@ private struct RecommendationPathwayCard: View {
                         HStack(spacing: 6) {
                             Image(systemName: "clock")
                                 .font(.system(size: 13, weight: .medium))
+                                .accessibilityHidden(true)
                             Text(durationText)
                                 .font(AppTypography.progressRecommendationsDuration)
                                 .tracking(1.0)
@@ -273,6 +308,7 @@ private struct RecommendationPathwayCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(pathway.priority == .critical ? ProgressPalette.recommendationsCard : ProgressPalette.secondaryRecommendationsCard)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 
     private var priorityPill: some View {
@@ -293,5 +329,24 @@ private struct RecommendationPathwayCard: View {
                     .foregroundStyle(ProgressPalette.textSecondary.opacity(0.4))
             }
         }
+        .accessibilityHidden(true)
+    }
+
+    var pathwaySummary: String {
+        var parts = [
+            pathway.priority.label,
+            pathway.subjectLine,
+            pathway.summary
+        ]
+
+        if let durationText = pathway.durationText {
+            parts.append("Estimated time \(durationText)")
+        }
+
+        if let scoreText = pathway.scoreText {
+            parts.append(scoreText)
+        }
+
+        return parts.joined(separator: ". ")
     }
 }

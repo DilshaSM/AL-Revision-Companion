@@ -2,9 +2,14 @@ import SwiftUI
 
 struct RecallToolsView: View {
     @Environment(\.dismiss) private var dismiss
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let content: RecallToolsContent
     private let actions: RecallToolsViewActions
+
+    private enum FocusTarget: Hashable {
+        case title
+    }
 
     init(content: RecallToolsContent = .live, actions: RecallToolsViewActions = .init()) {
         self.content = content
@@ -27,6 +32,9 @@ struct RecallToolsView: View {
         }
         .background(QuickRevisionPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            focusedElement = .title
+        }
     }
 }
 
@@ -49,11 +57,15 @@ private extension RecallToolsView {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Go back")
+                .accessibilityHint("Return to the previous screen.")
 
                 Text("Recall Tools")
                     .font(AppTypography.recallToolsTopBarTitle)
                     .tracking(-0.6)
                     .foregroundStyle(QuickRevisionPalette.topBarInk)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Spacer(minLength: 0)
             }
@@ -69,6 +81,7 @@ private extension RecallToolsView {
                 .font(AppTypography.recallToolsEyebrow)
                 .tracking(2.0)
                 .foregroundStyle(QuickRevisionPalette.brand)
+                .accessibilityHeader()
 
             VStack(alignment: .leading, spacing: 18) {
                 Text(content.title)
@@ -136,7 +149,9 @@ private struct RecallSupportCard: View {
                     Image(systemName: iconName)
                         .font(.system(size: 34, weight: .medium))
                         .foregroundStyle(accentColor)
+                        .accessibilityHidden(true)
                 }
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text(title)
@@ -160,6 +175,7 @@ private struct RecallSupportCard: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(QuickRevisionPalette.chevron.opacity(0.5))
                     .padding(.top, 8)
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -168,6 +184,10 @@ private struct RecallSupportCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue("\(description) \(metadata)")
+        .accessibilityHint("Open \(title).")
     }
 
     private var accentColor: Color {

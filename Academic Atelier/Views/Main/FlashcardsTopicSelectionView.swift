@@ -5,8 +5,14 @@ struct FlashcardsTopicSelectionView: View {
     @EnvironmentObject private var session: SessionViewModel
 
     @StateObject private var viewModel = FlashcardsTopicSelectionViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let actions: FlashcardsTopicSelectionActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(actions: FlashcardsTopicSelectionActions = .init()) {
         self.actions = actions
@@ -35,6 +41,16 @@ struct FlashcardsTopicSelectionView: View {
         .refreshable {
             await load(forceRefresh: true)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -56,6 +72,8 @@ private extension FlashcardsTopicSelectionView {
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Go back")
+            .accessibilityHint("Return to the previous screen.")
             .padding(.leading, 24)
             .padding(.top, 48)
             .padding(.bottom, 16)
@@ -68,6 +86,8 @@ private extension FlashcardsTopicSelectionView {
                 .font(AppTypography.flashcardsTopicSelectionTitle)
                 .tracking(-1.1)
                 .foregroundStyle(QuickRevisionPalette.ink)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Text(viewModel.content?.subtitle ?? "Choose a topic to start a quick recall session.")
                 .font(AppTypography.flashcardsTopicSelectionSubtitle)
@@ -85,6 +105,9 @@ private extension FlashcardsTopicSelectionView {
                     .font(.footnote)
                     .foregroundStyle(QuickRevisionPalette.muted)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading flashcard decks.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -99,14 +122,18 @@ private extension FlashcardsTopicSelectionView {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(QuickRevisionPalette.brand)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty {
             Text(viewModel.errorMessage)
                 .font(.footnote)
                 .foregroundStyle(SubjectsPalette.resultIncorrect)
+                .accessibilityFocused($focusedElement, equals: .status)
         } else if viewModel.isLoading {
             Text("Refreshing flashcard decks...")
                 .font(.footnote)
                 .foregroundStyle(QuickRevisionPalette.muted)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -116,6 +143,7 @@ private extension FlashcardsTopicSelectionView {
                 .font(AppTypography.flashcardsTopicSelectionSectionLabel)
                 .tracking(2.0)
                 .foregroundStyle(QuickRevisionPalette.sectionLabel)
+                .accessibilityHeader()
 
             if let content = viewModel.content, content.availableTopics.isEmpty {
                 Text(content.emptyStateMessage)
@@ -171,12 +199,15 @@ private struct FlashcardsTopicRow: View {
                     if isStarting {
                         ProgressView()
                             .tint(QuickRevisionPalette.brand)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: topic.symbolName)
                             .font(.system(size: 34, weight: .medium))
                             .foregroundStyle(QuickRevisionPalette.brand)
+                            .accessibilityHidden(true)
                     }
                 }
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(topic.title)
@@ -200,6 +231,7 @@ private struct FlashcardsTopicRow: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(QuickRevisionPalette.chevron)
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
@@ -209,5 +241,9 @@ private struct FlashcardsTopicRow: View {
         }
         .buttonStyle(.plain)
         .disabled(isStarting)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(topic.title)
+        .accessibilityValue(isStarting ? "Starting deck" : topic.detailText)
+        .accessibilityHint("Start a flashcard session for this topic.")
     }
 }

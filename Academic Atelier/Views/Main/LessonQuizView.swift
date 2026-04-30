@@ -6,12 +6,19 @@ struct LessonQuizView: View {
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
     @StateObject private var viewModel = LessonQuizViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let content: LessonQuizContent
     private let actions: LessonQuizActions
 
     @State private var currentQuestionIndex = 0
     @State private var selectedOptionIDsByQuestionID: [Int: Int] = [:]
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+        case question
+    }
 
     init(content: LessonQuizContent, actions: LessonQuizActions = .init()) {
         self.content = content
@@ -56,6 +63,22 @@ struct LessonQuizView: View {
                 .toolbar(.hidden, for: .tabBar)
                 .task(id: content.quizID) {
                     await startAttempt()
+                }
+                .onAppear {
+                    focusedElement = .title
+                }
+                .onChange(of: viewModel.errorMessage) { _, message in
+                    guard !message.isEmpty else { return }
+                    focusedElement = .status
+                    Task { @MainActor in
+                        AccessibilitySupport.announce(message)
+                    }
+                }
+                .onChange(of: currentQuestionIndex) { _, newValue in
+                    focusedElement = .question
+                    Task { @MainActor in
+                        AccessibilitySupport.announce("Question \(newValue + 1) of \(content.questions.count).")
+                    }
                 }
             }
         }
@@ -111,6 +134,8 @@ private extension LessonQuizView {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close quiz")
+            .accessibilityHint("Return to the previous screen.")
 
             Capsule(style: .continuous)
                 .fill(SubjectsPalette.quizProgressTrack)
@@ -120,6 +145,7 @@ private extension LessonQuizView {
                         .fill(SubjectsPalette.quizProgressFill)
                         .frame(width: 163.0 * progressFraction)
                 }
+                .accessibilityHidden(true)
 
             Spacer(minLength: 0)
 
@@ -133,6 +159,10 @@ private extension LessonQuizView {
                     .font(AppTypography.subjectQuizTopBarCount)
                     .foregroundStyle(SubjectsPalette.quizTopBarCount)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Quiz progress")
+            .accessibilityValue("Question \(currentQuestionNumber) of \(content.questions.count) in \(content.topicTitle).")
+            .accessibilityFocused($focusedElement, equals: .title)
         }
         .padding(.horizontal, 24)
         .padding(.top, 48)
@@ -158,6 +188,9 @@ private extension LessonQuizView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Preparing your quiz attempt.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -178,6 +211,8 @@ private extension LessonQuizView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -195,6 +230,7 @@ private extension LessonQuizView {
             )
             .font(AppTypography.subjectQuizQuestionHeadline)
             .tracking(-0.9)
+            .accessibilityLabel("Question \(currentQuestionNumber) of \(content.questions.count)")
 
             if let subtitle = content.topicSubtitle, !subtitle.isEmpty {
                 Text(subtitle)
@@ -202,6 +238,8 @@ private extension LessonQuizView {
                     .foregroundStyle(SubjectsPalette.muted)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityHeader()
     }
 
     var questionPrompt: some View {
@@ -211,6 +249,8 @@ private extension LessonQuizView {
             .tracking(-0.6)
             .lineSpacing(6)
             .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel(currentQuestion.prompt)
+            .accessibilityFocused($focusedElement, equals: .question)
     }
 
     var optionsSection: some View {
@@ -221,6 +261,9 @@ private extension LessonQuizView {
                     isSelected: selectedOptionIDsByQuestionID[currentQuestion.id] == option.id
                 ) {
                     selectedOptionIDsByQuestionID[currentQuestion.id] = option.id
+                    Task { @MainActor in
+                        AccessibilitySupport.announce("Selected answer. \(option.text)")
+                    }
                 }
             }
         }
@@ -243,6 +286,7 @@ private extension LessonQuizView {
             }
             .buttonStyle(.plain)
             .disabled(isOnFirstQuestion || viewModel.isSubmitting)
+            .accessibilityHint("Go to the previous question.")
 
             Button {
                 handlePrimaryAction()
@@ -257,6 +301,7 @@ private extension LessonQuizView {
             }
             .buttonStyle(.plain)
             .disabled(!canPerformPrimaryAction)
+            .accessibilityHint(isOnLastQuestion ? "Submit your quiz answers." : "Go to the next question.")
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
@@ -338,6 +383,7 @@ private struct QuizOptionRow: View {
                             .fill(isSelected ? SubjectsPalette.brandBright : .clear)
                     )
                     .frame(width: 40, height: 40)
+                    .accessibilityHidden(true)
 
                 Text(title)
                     .font(AppTypography.subjectQuizOptionLabel)
@@ -363,5 +409,9 @@ private struct QuizOptionRow: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityHint("Double tap to choose this answer.")
     }
 }

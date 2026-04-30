@@ -5,8 +5,14 @@ struct QuickRevisionContentView: View {
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
     @StateObject private var viewModel = QuickRevisionContentViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let topic: QuickRevisionTopic
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(topic: QuickRevisionTopic) {
         self.topic = topic
@@ -31,6 +37,16 @@ struct QuickRevisionContentView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task(id: topic.id) {
             await loadTopic()
+        }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
         }
     }
 }
@@ -57,6 +73,8 @@ private extension QuickRevisionContentView {
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Go back")
+            .accessibilityHint("Return to the topic list.")
             .padding(.leading, 28)
             .padding(.top, 48)
             .padding(.bottom, 16)
@@ -69,6 +87,8 @@ private extension QuickRevisionContentView {
                 .font(AppTypography.quickRevisionTopicTitle)
                 .tracking(-0.9)
                 .foregroundStyle(QuickRevisionPalette.ink)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             if let content = viewModel.content {
                 if let subtitle = content.subtitle, !subtitle.isEmpty {
@@ -100,6 +120,9 @@ private extension QuickRevisionContentView {
                     .font(.footnote)
                     .foregroundStyle(QuickRevisionPalette.muted)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading revision notes.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty && viewModel.content == nil {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -114,6 +137,8 @@ private extension QuickRevisionContentView {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(QuickRevisionPalette.brand)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -142,6 +167,7 @@ private extension QuickRevisionContentView {
             .font(AppTypography.quickRevisionSectionLabel)
             .tracking(2.0)
             .foregroundStyle(QuickRevisionPalette.sectionLabel)
+            .accessibilityHeader()
     }
 
     func loadTopic() async {
@@ -188,6 +214,9 @@ private struct QuickRevisionSectionCard: View {
             .frame(maxWidth: .infinity)
             .background(AppColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(section.title)
+            .accessibilityValue(section.content)
         case .principle:
             alignedCard(
                 titleFont: AppTypography.quickRevisionLawTitle,
@@ -210,6 +239,7 @@ private struct QuickRevisionSectionCard: View {
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(QuickRevisionPalette.brand)
                         .padding(.top, 2)
+                        .accessibilityHidden(true)
 
                     Text(section.content)
                         .font(AppTypography.quickRevisionSummaryBody)
@@ -222,6 +252,9 @@ private struct QuickRevisionSectionCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(QuickRevisionPalette.summaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(section.title)
+            .accessibilityValue(section.content)
         case .generic:
             alignedCard(
                 titleFont: AppTypography.quickRevisionLawTitle,
@@ -261,5 +294,8 @@ private struct QuickRevisionSectionCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(background)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(body)
     }
 }

@@ -4,9 +4,15 @@ struct QuickRevisionTopicSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var session: SessionViewModel
     @StateObject private var viewModel = QuickRevisionTopicSelectionViewModel()
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let subject: QuickRevisionSubject
     private let actions: QuickRevisionTopicSelectionActions
+
+    private enum FocusTarget: Hashable {
+        case title
+        case status
+    }
 
     init(subject: QuickRevisionSubject, actions: QuickRevisionTopicSelectionActions = .init()) {
         self.subject = subject
@@ -36,6 +42,16 @@ struct QuickRevisionTopicSelectionView: View {
         .refreshable {
             await load(forceRefresh: true)
         }
+        .onAppear {
+            focusedElement = .title
+        }
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
     }
 }
 
@@ -58,11 +74,15 @@ private extension QuickRevisionTopicSelectionView {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Go back")
+                .accessibilityHint("Return to the previous screen.")
 
                 Text("Select Topic")
                     .font(AppTypography.quickRevisionTopBarTitle)
                     .tracking(-0.6)
                     .foregroundStyle(QuickRevisionPalette.topBarInk)
+                    .accessibilityHeader()
+                    .accessibilityFocused($focusedElement, equals: .title)
 
                 Spacer(minLength: 0)
             }
@@ -94,6 +114,9 @@ private extension QuickRevisionTopicSelectionView {
                     .font(.footnote)
                     .foregroundStyle(QuickRevisionPalette.muted)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Loading topics.")
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if !viewModel.errorMessage.isEmpty && viewModel.topics.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.errorMessage)
@@ -108,10 +131,13 @@ private extension QuickRevisionTopicSelectionView {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(QuickRevisionPalette.brand)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityFocused($focusedElement, equals: .status)
         } else if viewModel.isLoading {
             Text("Refreshing topics...")
                 .font(.footnote)
                 .foregroundStyle(QuickRevisionPalette.muted)
+                .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -121,6 +147,7 @@ private extension QuickRevisionTopicSelectionView {
                 .font(AppTypography.quickRevisionSectionLabel)
                 .tracking(1.2)
                 .foregroundStyle(QuickRevisionPalette.sectionLabel)
+                .accessibilityHeader()
 
             if viewModel.topics.isEmpty, let emptyStateMessage = emptyStateMessage {
                 Text(emptyStateMessage)
@@ -171,7 +198,9 @@ private struct QuickRevisionTopicRow: View {
                     Image(systemName: topic.symbolName)
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(QuickRevisionPalette.brand)
+                        .accessibilityHidden(true)
                 }
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text(topic.title)
@@ -192,6 +221,7 @@ private struct QuickRevisionTopicRow: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(QuickRevisionPalette.chevron)
+                    .accessibilityHidden(true)
             }
             .padding(16)
             .frame(maxWidth: .infinity)
@@ -199,5 +229,9 @@ private struct QuickRevisionTopicRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(topic.title)
+        .accessibilityValue(topic.subtitle ?? "")
+        .accessibilityHint("Open quick revision notes for this topic.")
     }
 }

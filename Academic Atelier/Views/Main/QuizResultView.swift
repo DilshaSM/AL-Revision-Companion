@@ -2,9 +2,14 @@ import SwiftUI
 
 struct QuizResultView: View {
     @Environment(\.dismiss) private var dismiss
+    @AccessibilityFocusState private var focusedElement: FocusTarget?
 
     private let content: QuizResultContent
     private let actions: QuizResultActions
+
+    private enum FocusTarget: Hashable {
+        case title
+    }
 
     init(content: QuizResultContent, actions: QuizResultActions = .init()) {
         self.content = content
@@ -29,6 +34,12 @@ struct QuizResultView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .onAppear {
+            focusedElement = .title
+            Task { @MainActor in
+                AccessibilitySupport.announce("Quiz completed. Score \(content.scoreText). \(content.masteryLevel).")
+            }
+        }
     }
 }
 
@@ -40,6 +51,8 @@ private extension QuizResultView {
             Text("Results")
                 .font(AppTypography.subjectQuizResultTopBarTitle)
                 .foregroundStyle(SubjectsPalette.ink)
+                .accessibilityHeader()
+                .accessibilityFocused($focusedElement, equals: .title)
 
             Spacer()
 
@@ -48,6 +61,7 @@ private extension QuizResultView {
             }
             .font(AppTypography.subjectQuizResultTopBarAction)
             .foregroundStyle(SubjectsPalette.brand)
+            .accessibilityHint("Close the results screen.")
         }
         .padding(.horizontal, 24)
         .padding(.top, 48)
@@ -72,6 +86,7 @@ private extension QuizResultView {
                         .fill(.white)
                         .frame(width: 168, height: 168)
                         .shadow(color: Color.black.opacity(0.04), radius: 24, x: 0, y: 12)
+                        .accessibilityHidden(true)
 
                     VStack(spacing: 4) {
                         Text(content.scoreText)
@@ -117,6 +132,9 @@ private extension QuizResultView {
             .background(AppColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 16, x: 0, y: 8)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Quiz completed for \(content.topicTitle).")
+            .accessibilityValue("Score \(content.scoreText). Mastery \(content.masteryLevel). \(content.correctCount) correct and \(content.incorrectCount) incorrect. \(content.headline). \(content.message)")
         }
     }
 
@@ -132,6 +150,9 @@ private extension QuizResultView {
         .frame(maxWidth: .infinity, minHeight: 96)
         .background(background)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title.capitalized)
+        .accessibilityValue(value)
     }
 
     var summarySection: some View {
@@ -171,6 +192,7 @@ private extension QuizResultView {
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(tint)
                 }
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -189,6 +211,9 @@ private extension QuizResultView {
         .frame(maxWidth: .infinity, minHeight: 88)
         .background(SubjectsPalette.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title.capitalized)
+        .accessibilityValue(value)
     }
 
     var detailSection: some View {
@@ -233,6 +258,7 @@ private extension QuizResultView {
             }
             .buttonStyle(.plain)
             .disabled(content.nextLesson == nil)
+            .accessibilityHint(content.nextLesson == nil ? "No next topic is available yet." : "Open the next topic.")
 
             HStack(spacing: 20) {
                 secondaryActionButton(
@@ -264,6 +290,7 @@ private extension QuizResultView {
             HStack(spacing: 10) {
                 Image(systemName: systemName)
                     .font(.system(size: 18, weight: .semibold))
+                    .accessibilityHidden(true)
                 Text(title.uppercased())
                     .font(AppTypography.subjectQuizResultSecondaryButton)
                     .tracking(0.6)
@@ -274,6 +301,7 @@ private extension QuizResultView {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 
