@@ -25,6 +25,13 @@ final class HomeDashboardViewModel: ObservableObject {
         do {
             let payload = try await service.getHome()
             content = .dashboard(from: payload, for: user)
+
+            if user?.preference?.areNotificationsEnabled == true {
+                try? await RevisionNotificationScheduler().rescheduleNotifications(
+                    isEnabled: true,
+                    homePayload: payload
+                )
+            }
         } catch let error as APIError {
             if error.requiresSignOut {
                 requiresSignOut = true

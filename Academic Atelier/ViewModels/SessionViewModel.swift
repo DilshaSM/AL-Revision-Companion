@@ -414,6 +414,7 @@ final class SessionViewModel: ObservableObject {
         tokenStore.removeToken()
         tokenStore.removeBiometricToken()
         storage.clearAll()
+        NotificationService.shared.cancelRevisionNotifications()
         authRoute = .signIn
     }
 

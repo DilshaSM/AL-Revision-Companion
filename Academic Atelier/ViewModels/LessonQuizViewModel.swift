@@ -9,10 +9,18 @@ final class LessonQuizViewModel: ObservableObject {
     @Published private(set) var requiresSignOut = false
 
     private let service: SubjectsService
+    private let dashboardService: DashboardService
+    private let notificationScheduler: RevisionNotificationScheduler
     private var startedQuizID: Int?
 
-    init(service: SubjectsService = SubjectsService()) {
+    init(
+        service: SubjectsService = SubjectsService(),
+        dashboardService: DashboardService = DashboardService(),
+        notificationScheduler: RevisionNotificationScheduler = RevisionNotificationScheduler()
+    ) {
         self.service = service
+        self.dashboardService = dashboardService
+        self.notificationScheduler = notificationScheduler
     }
 
     func startAttemptIfNeeded(for content: LessonQuizContent) async {
@@ -41,7 +49,8 @@ final class LessonQuizViewModel: ObservableObject {
 
     func submit(
         content: LessonQuizContent,
-        selectedOptionIDsByQuestionID: [Int: Int?]
+        selectedOptionIDsByQuestionID: [Int: Int?],
+        notificationsEnabled: Bool
     ) async -> QuizResultContent? {
         guard let attemptID else {
             errorMessage = "The quiz attempt is not ready yet. Please try again."
@@ -67,6 +76,14 @@ final class LessonQuizViewModel: ObservableObject {
                 attemptID: attemptID,
                 answers: answers
             )
+
+            if notificationsEnabled {
+                let dashboardPayload = try? await dashboardService.getHome()
+                try? await notificationScheduler.rescheduleNotifications(
+                    isEnabled: true,
+                    homePayload: dashboardPayload
+                )
+            }
 
             return QuizResultContent.build(
                 from: content,

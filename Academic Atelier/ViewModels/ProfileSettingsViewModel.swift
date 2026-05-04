@@ -10,7 +10,12 @@ final class ProfileSettingsViewModel: ObservableObject {
     @Published private(set) var isSavingBiometric = false
     @Published private(set) var errorMessage = ""
 
+    private let notificationScheduler = RevisionNotificationScheduler()
+    private let dashboardService = DashboardService()
+    private let notificationService: NotificationService
+
     init(settings: ProfileSettings = .init()) {
+        notificationService = .shared
         self.settings = settings
     }
 
@@ -60,6 +65,16 @@ final class ProfileSettingsViewModel: ObservableObject {
             }
 
             settings = try await session.savePreferences(localNotificationsEnabled: isEnabled)
+
+            if isEnabled {
+                let homePayload = try await dashboardService.getHome()
+                try await notificationScheduler.rescheduleNotifications(
+                    isEnabled: true,
+                    homePayload: homePayload
+                )
+            } else {
+                notificationService.cancelRevisionNotifications()
+            }
         } catch {
             settings = previousSettings
             throw error
@@ -96,34 +111,12 @@ final class ProfileSettingsViewModel: ObservableObject {
     }
 
     private func notificationAuthorizationStatus() async -> UNAuthorizationStatus {
-        await withCheckedContinuation { continuation in
-            UNUserNotificationCenter.current().getNotificationSettings { settings in
-                continuation.resume(returning: settings.authorizationStatus)
-            }
-        }
+        let settings = await notificationService.notificationSettings()
+        return settings.authorizationStatus
     }
 
     private func requestNotificationAuthorizationIfNeeded() async throws -> Bool {
-        let status = await notificationAuthorizationStatus()
-
-        switch status {
-        case .authorized, .provisional, .ephemeral:
-            return true
-        case .denied:
-            return false
-        case .notDetermined:
-            return try await withCheckedThrowingContinuation { continuation in
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: granted)
-                    }
-                }
-            }
-        @unknown default:
-            return false
-        }
+        try await notificationService.requestAuthorizationIfNeeded()
     }
 
     private func validateBiometricEnrollment() async throws {

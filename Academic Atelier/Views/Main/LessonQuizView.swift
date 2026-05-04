@@ -340,7 +340,8 @@ private extension LessonQuizView {
 
                 guard let result = await viewModel.submit(
                     content: content,
-                    selectedOptionIDsByQuestionID: answers
+                    selectedOptionIDsByQuestionID: answers,
+                    notificationsEnabled: session.currentUser?.preference?.areNotificationsEnabled == true
                 ) else {
                     if viewModel.requiresSignOut {
                         session.signOut()
