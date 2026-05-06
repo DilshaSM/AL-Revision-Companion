@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7B4A10012F923FC200B4E3D3 /* AcademicAtelierWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */; };
+		7B4A10042F923FC200B4E3D3 /* AcademicAtelierWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10032F923FC200B4E3D3 /* AcademicAtelierWidget.swift */; };
+		7B4A10062F923FC200B4E3D3 /* WidgetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */; };
+		7B4A10082F923FC200B4E3D3 /* WidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */; };
+		7B4A100A2F923FC200B4E3D3 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10092F923FC200B4E3D3 /* WidgetViews.swift */; };
+		7B4A100C2F923FC200B4E3D3 /* WidgetSummaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A100B2F923FC200B4E3D3 /* WidgetSummaryModels.swift */; };
+		7B4A100E2F923FC200B4E3D3 /* WidgetCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A100D2F923FC200B4E3D3 /* WidgetCacheService.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		39F8AEE72F923FC200B4E3D3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +31,41 @@
 			remoteGlobalIDString = 39F8AED62F923FBF00B4E3D3;
 			remoteInfo = "AL Revision Companion";
 		};
-/* End PBXContainerItemProxy section */
+		7B4A101C2F923FC200B4E3D3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 39F8AECF2F923FBF00B4E3D3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7B4A10122F923FC200B4E3D3;
+			remoteInfo = AcademicAtelierWidgetExtension;
+		};
+	/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7B4A100F2F923FC200B4E3D3 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7B4A10012F923FC200B4E3D3 /* AcademicAtelierWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		39F8AED72F923FBF00B4E3D3 /* AL Revision Companion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AL Revision Companion.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		39F8AEE62F923FC200B4E3D3 /* AL Revision CompanionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AL Revision CompanionTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		39F8AEF02F923FC200B4E3D3 /* AL Revision CompanionUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AL Revision CompanionUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
+		7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AcademicAtelierWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7B4A10032F923FC200B4E3D3 /* AcademicAtelierWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcademicAtelierWidget.swift; sourceTree = "<group>"; };
+		7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetEntry.swift; sourceTree = "<group>"; };
+		7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetProvider.swift; sourceTree = "<group>"; };
+		7B4A10092F923FC200B4E3D3 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
+		7B4A100B2F923FC200B4E3D3 /* WidgetSummaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Academic Atelier/Models/WidgetSummaryModels.swift"; sourceTree = SOURCE_ROOT; };
+		7B4A100D2F923FC200B4E3D3 /* WidgetCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Academic Atelier/Services/WidgetCacheService.swift"; sourceTree = SOURCE_ROOT; };
+	/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		39F8AED92F923FBF00B4E3D3 /* Academic Atelier */ = {
@@ -69,13 +107,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXFrameworksBuildPhase section */
+		7B4A10152F923FC200B4E3D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+	/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		39F8AECE2F923FBF00B4E3D3 = {
 			isa = PBXGroup;
 			children = (
 				39F8AED92F923FBF00B4E3D3 /* Academic Atelier */,
+				7B4A10112F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */,
 				39F8AEE92F923FC200B4E3D3 /* Academic AtelierTests */,
 				39F8AEF32F923FC200B4E3D3 /* Academic AtelierUITests */,
 				39F8AED82F923FBF00B4E3D3 /* Products */,
@@ -86,13 +132,27 @@
 			isa = PBXGroup;
 			children = (
 				39F8AED72F923FBF00B4E3D3 /* AL Revision Companion.app */,
+				7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */,
 				39F8AEE62F923FC200B4E3D3 /* AL Revision CompanionTests.xctest */,
 				39F8AEF02F923FC200B4E3D3 /* AL Revision CompanionUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-/* End PBXGroup section */
+		7B4A10112F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */ = {
+			isa = PBXGroup;
+			children = (
+				7B4A10032F923FC200B4E3D3 /* AcademicAtelierWidget.swift */,
+				7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */,
+				7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */,
+				7B4A10092F923FC200B4E3D3 /* WidgetViews.swift */,
+				7B4A100B2F923FC200B4E3D3 /* WidgetSummaryModels.swift */,
+				7B4A100D2F923FC200B4E3D3 /* WidgetCacheService.swift */,
+			);
+			path = AcademicAtelierWidgetExtension;
+			sourceTree = "<group>";
+		};
+	/* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
 		39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */ = {
@@ -102,10 +162,12 @@
 				39F8AED32F923FBF00B4E3D3 /* Sources */,
 				39F8AED42F923FBF00B4E3D3 /* Frameworks */,
 				39F8AED52F923FBF00B4E3D3 /* Resources */,
+				7B4A100F2F923FC200B4E3D3 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7B4A101D2F923FC200B4E3D3 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				39F8AED92F923FBF00B4E3D3 /* Academic Atelier */,
@@ -163,7 +225,26 @@
 			productReference = 39F8AEF02F923FC200B4E3D3 /* AL Revision CompanionUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-/* End PBXNativeTarget section */
+		7B4A10122F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7B4A10192F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AcademicAtelierWidgetExtension" */;
+			buildPhases = (
+				7B4A10142F923FC200B4E3D3 /* Sources */,
+				7B4A10152F923FC200B4E3D3 /* Frameworks */,
+				7B4A10162F923FC200B4E3D3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AcademicAtelierWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = AcademicAtelierWidget;
+			productReference = 7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+	/* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		39F8AECF2F923FBF00B4E3D3 /* Project object */ = {
@@ -174,6 +255,9 @@
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					39F8AED62F923FBF00B4E3D3 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					7B4A10122F923FC200B4E3D3 = {
 						CreatedOnToolsVersion = 16.4;
 					};
 					39F8AEE52F923FC200B4E3D3 = {
@@ -201,6 +285,7 @@
 			projectRoot = "";
 			targets = (
 				39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */,
+				7B4A10122F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */,
 				39F8AEE52F923FC200B4E3D3 /* AL Revision CompanionTests */,
 				39F8AEEF2F923FC200B4E3D3 /* AL Revision CompanionUITests */,
 			);
@@ -229,7 +314,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXResourcesBuildPhase section */
+		7B4A10162F923FC200B4E3D3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+	/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		39F8AED32F923FBF00B4E3D3 /* Sources */ = {
@@ -253,7 +345,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXSourcesBuildPhase section */
+		7B4A10142F923FC200B4E3D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7B4A10042F923FC200B4E3D3 /* AcademicAtelierWidget.swift in Sources */,
+				7B4A10062F923FC200B4E3D3 /* WidgetEntry.swift in Sources */,
+				7B4A10082F923FC200B4E3D3 /* WidgetProvider.swift in Sources */,
+				7B4A100A2F923FC200B4E3D3 /* WidgetViews.swift in Sources */,
+				7B4A100C2F923FC200B4E3D3 /* WidgetSummaryModels.swift in Sources */,
+				7B4A100E2F923FC200B4E3D3 /* WidgetCacheService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+	/* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		39F8AEE82F923FC200B4E3D3 /* PBXTargetDependency */ = {
@@ -266,7 +371,12 @@
 			target = 39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */;
 			targetProxy = 39F8AEF12F923FC200B4E3D3 /* PBXContainerItemProxy */;
 		};
-/* End PBXTargetDependency section */
+		7B4A101D2F923FC200B4E3D3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7B4A10122F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */;
+			targetProxy = 7B4A101C2F923FC200B4E3D3 /* PBXContainerItemProxy */;
+		};
+	/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		39F8AEF82F923FC200B4E3D3 /* Debug */ = {
@@ -393,6 +503,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Academic Atelier/AcademicAtelier.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -426,6 +537,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Academic Atelier/AcademicAtelier.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -522,7 +634,59 @@
 			};
 			name = Release;
 		};
-/* End XCBuildConfiguration section */
+		7B4A101A2F923FC200B4E3D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AcademicAtelierWidgetExtension/AcademicAtelierWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AcademicAtelierWidgetExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanion.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7B4A101B2F923FC200B4E3D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = AcademicAtelierWidgetExtension/AcademicAtelierWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AcademicAtelierWidgetExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dilsha.alrevisioncompanion.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+	/* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "Academic Atelier" */ = {
@@ -539,6 +703,15 @@
 			buildConfigurations = (
 				39F8AEFB2F923FC200B4E3D3 /* Debug */,
 				39F8AEFC2F923FC200B4E3D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7B4A10192F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AcademicAtelierWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7B4A101A2F923FC200B4E3D3 /* Debug */,
+				7B4A101B2F923FC200B4E3D3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

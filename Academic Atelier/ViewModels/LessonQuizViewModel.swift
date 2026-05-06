@@ -11,16 +11,19 @@ final class LessonQuizViewModel: ObservableObject {
     private let service: SubjectsService
     private let dashboardService: DashboardService
     private let notificationScheduler: RevisionNotificationScheduler
+    private let widgetSummarySyncService: WidgetSummarySyncService
     private var startedQuizID: Int?
 
     init(
         service: SubjectsService = SubjectsService(),
         dashboardService: DashboardService = DashboardService(),
-        notificationScheduler: RevisionNotificationScheduler = RevisionNotificationScheduler()
+        notificationScheduler: RevisionNotificationScheduler = RevisionNotificationScheduler(),
+        widgetSummarySyncService: WidgetSummarySyncService = WidgetSummarySyncService()
     ) {
         self.service = service
         self.dashboardService = dashboardService
         self.notificationScheduler = notificationScheduler
+        self.widgetSummarySyncService = widgetSummarySyncService
     }
 
     func startAttemptIfNeeded(for content: LessonQuizContent) async {
@@ -76,6 +79,8 @@ final class LessonQuizViewModel: ObservableObject {
                 attemptID: attemptID,
                 answers: answers
             )
+
+            try? await widgetSummarySyncService.refresh()
 
             if notificationsEnabled {
                 let dashboardPayload = try? await dashboardService.getHome()

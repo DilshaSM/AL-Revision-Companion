@@ -8,9 +8,14 @@ final class HomeDashboardViewModel: ObservableObject {
     @Published private(set) var requiresSignOut = false
 
     private let service: DashboardService
+    private let widgetSummarySyncService: WidgetSummarySyncService
 
-    init(service: DashboardService = DashboardService()) {
+    init(
+        service: DashboardService = DashboardService(),
+        widgetSummarySyncService: WidgetSummarySyncService = WidgetSummarySyncService()
+    ) {
         self.service = service
+        self.widgetSummarySyncService = widgetSummarySyncService
     }
 
     func load(for user: User?, forceRefresh: Bool = false) async {
@@ -25,6 +30,7 @@ final class HomeDashboardViewModel: ObservableObject {
         do {
             let payload = try await service.getHome()
             content = .dashboard(from: payload, for: user)
+            try? await widgetSummarySyncService.refresh()
 
             if user?.preference?.areNotificationsEnabled == true {
                 try? await RevisionNotificationScheduler().rescheduleNotifications(
