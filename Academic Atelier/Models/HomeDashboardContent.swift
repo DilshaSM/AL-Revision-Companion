@@ -84,6 +84,7 @@ struct HomeDashboardContent {
                 compactCards: [
                     .init(
                         id: "physics",
+                        subjectId: 1,
                         title: "Physics",
                         detail: "2H AGO",
                         progress: 0.45,
@@ -93,6 +94,7 @@ struct HomeDashboardContent {
                     ),
                     .init(
                         id: "chemistry",
+                        subjectId: 2,
                         title: "Chemistry",
                         detail: "5H AGO",
                         progress: 0.82,
@@ -102,6 +104,7 @@ struct HomeDashboardContent {
                     )
                 ],
                 featuredCard: .init(
+                    subjectId: 3,
                     title: "Biology",
                     detail: "NEXT: MOLECULAR GENETICS",
                     icon: "leaf.fill",
@@ -208,6 +211,7 @@ extension HomeDashboardContent {
 
     struct CompactRecentSubjectContent: Identifiable {
         var id: String
+        var subjectId: Int
         var title: String
         var detail: String
         var progress: Double
@@ -217,6 +221,7 @@ extension HomeDashboardContent {
     }
 
     struct FeaturedRecentSubjectContent {
+        var subjectId: Int
         var title: String
         var detail: String
         var icon: String
@@ -387,6 +392,7 @@ private extension HomeDashboardContent {
         let cards = subjects.prefix(5).map { subject in
             CompactRecentSubjectContent(
                 id: "\(subject.subjectId)",
+                subjectId: subject.subjectId,
                 title: subject.subjectName,
                 detail: relativeTimeText(from: subject.lastAccessedAt, to: date),
                 progress: 0,
@@ -400,6 +406,7 @@ private extension HomeDashboardContent {
             compactCards: Array(cards.prefix(2)),
             featuredCard: cards.dropFirst(2).first.map { card in
                 FeaturedRecentSubjectContent(
+                    subjectId: card.subjectId,
                     title: card.title,
                     detail: card.detail,
                     icon: card.icon,

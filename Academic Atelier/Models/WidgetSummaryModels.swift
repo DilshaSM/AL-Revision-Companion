@@ -29,3 +29,46 @@ struct CachedRevisionProgress: Codable {
     let activeDays: Int
     let chaptersCompleted: Int
 }
+
+extension CachedWidgetSummary {
+    var continueLearningURL: URL {
+        guard let item = continueLearning else {
+            return homeURL
+        }
+
+        var components = URLComponents()
+        components.scheme = "academicatelier"
+        components.host = "continue-learning"
+        components.queryItems = [
+            item.subjectId.map { URLQueryItem(name: "subjectId", value: "\($0)") },
+            item.lessonId.map { URLQueryItem(name: "lessonId", value: "\($0)") },
+            item.topicId.map { URLQueryItem(name: "topicId", value: "\($0)") }
+        ].compactMap { $0 }
+
+        return components.url ?? homeURL
+    }
+
+    var todaysFocusURL: URL {
+        guard let item = todaysFocus else {
+            return homeURL
+        }
+
+        var components = URLComponents()
+        components.scheme = "academicatelier"
+        components.host = "recommendation"
+        components.queryItems = [
+            item.subjectId.map { URLQueryItem(name: "subjectId", value: "\($0)") },
+            item.topicId.map { URLQueryItem(name: "topicId", value: "\($0)") }
+        ].compactMap { $0 }
+
+        return components.url ?? homeURL
+    }
+
+    var progressURL: URL {
+        URL(string: "academicatelier://progress")!
+    }
+
+    var homeURL: URL {
+        URL(string: "academicatelier://home")!
+    }
+}

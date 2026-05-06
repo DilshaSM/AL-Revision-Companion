@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var session: SessionViewModel
+    @EnvironmentObject private var router: AppRouter
 
     var body: some View {
         Group {
@@ -31,6 +32,23 @@ struct RootView: View {
                     MainTabView()
                 }
             }
+        }
+        .onOpenURL { url in
+            guard let deepLink = AppDeepLink.parse(url) else { return }
+
+            if session.currentUser == nil {
+                session.showSignIn()
+                return
+            }
+
+            if session.currentUser?.streamId == nil {
+                Task {
+                    await session.ensureAvailableStreams()
+                }
+                return
+            }
+
+            router.handle(deepLink)
         }
     }
 }

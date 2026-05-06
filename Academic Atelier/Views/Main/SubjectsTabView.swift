@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SubjectsTabView: View {
+    @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
@@ -131,6 +132,9 @@ struct SubjectsTabView: View {
             Task { @MainActor in
                 AccessibilitySupport.announce(message)
             }
+        }
+        .task(id: router.pendingDeepLink) {
+            await consumePendingDeepLinkIfNeeded()
         }
     }
 }
@@ -283,6 +287,43 @@ private extension SubjectsTabView {
                 routeErrorMessage = error.localizedDescription
             }
         }
+    }
+
+    func consumePendingDeepLinkIfNeeded() async {
+        guard let deepLink = router.pendingDeepLink else { return }
+
+        switch deepLink {
+        case let .subject(subjectId):
+            await openSubject(subjectId: subjectId)
+        case let .continueLearning(subjectId, _, _):
+            guard let subjectId else {
+                router.clearPendingDeepLink()
+                return
+            }
+            await openSubject(subjectId: subjectId)
+        case let .recommendation(subjectId, _):
+            guard let subjectId else {
+                router.clearPendingDeepLink()
+                return
+            }
+            await openSubject(subjectId: subjectId)
+        case .home, .progress, .subjects:
+            router.clearPendingDeepLink()
+        }
+    }
+
+    func openSubject(subjectId: Int) async {
+        if content == nil {
+            await loadSubjects(forceRefresh: false)
+        }
+
+        guard let subject = viewModel.content?.subjects.first(where: { $0.id == subjectId }) else {
+            router.clearPendingDeepLink()
+            return
+        }
+
+        path = [.lessons(subject)]
+        router.clearPendingDeepLink()
     }
 }
 

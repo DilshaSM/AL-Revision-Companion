@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RecommendationsView: View {
+    @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
@@ -210,6 +211,7 @@ private extension RecommendationsView {
                     VStack(spacing: 16) {
                         ForEach(content.pathways) { pathway in
                             RecommendationPathwayCard(pathway: pathway) {
+                                handleStartRevision(pathway)
                                 actions.onTapStartRevision(pathway)
                             }
                         }
@@ -228,6 +230,20 @@ private extension RecommendationsView {
         if viewModel.requiresSignOut {
             session.signOut()
         }
+    }
+
+    func handleStartRevision(_ pathway: RecommendationsContent.Pathway) {
+        if pathway.subjectId == nil && pathway.topicId == nil {
+            router.handle(.subjects)
+            return
+        }
+
+        router.handle(
+            .recommendation(
+                subjectId: pathway.subjectId,
+                topicId: pathway.topicId
+            )
+        )
     }
 }
 

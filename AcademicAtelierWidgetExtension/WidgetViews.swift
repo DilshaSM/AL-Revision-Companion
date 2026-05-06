@@ -10,12 +10,12 @@ struct WidgetRootView: View {
         switch family {
         case .systemSmall:
             SmallWidgetView(summary: entry.summary)
-                .widgetURL(URL(string: "academicatelier://continue-learning"))
+                .widgetURL(entry.summary?.continueLearningURL ?? URL(string: "academicatelier://home")!)
         case .systemMedium:
             MediumWidgetView(summary: entry.summary)
         default:
             SmallWidgetView(summary: entry.summary)
-                .widgetURL(URL(string: "academicatelier://home"))
+                .widgetURL(URL(string: "academicatelier://home")!)
         }
     }
 }
@@ -82,7 +82,7 @@ private struct MediumWidgetView: View {
             WidgetTheme.background
 
             HStack(spacing: 16) {
-                Link(destination: URL(string: "academicatelier://recommendation")!) {
+                Link(destination: summary?.todaysFocusURL ?? URL(string: "academicatelier://home")!) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("TODAY’S FOCUS")
                             .font(.system(size: 11, weight: .bold))
@@ -105,19 +105,21 @@ private struct MediumWidgetView: View {
                 .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("CONTINUE")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(WidgetTheme.eyebrow)
+                    Link(destination: summary?.continueLearningURL ?? URL(string: "academicatelier://home")!) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("CONTINUE")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(WidgetTheme.eyebrow)
 
-                        Text(summary?.continueLearning?.title ?? "Open the app to continue learning.")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(WidgetTheme.primaryText)
-                            .lineLimit(2)
+                            Text(summary?.continueLearning?.title ?? "Open the app to continue learning.")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(WidgetTheme.primaryText)
+                                .lineLimit(2)
+                        }
                     }
-                    .widgetURL(URL(string: "academicatelier://continue-learning"))
+                    .buttonStyle(.plain)
 
-                    Link(destination: URL(string: "academicatelier://progress")!) {
+                    Link(destination: summary?.progressURL ?? URL(string: "academicatelier://progress")!) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("WEEKLY GOAL")
                                 .font(.system(size: 11, weight: .bold))
@@ -143,7 +145,7 @@ private struct MediumWidgetView: View {
         .containerBackground(for: .widget) {
             WidgetTheme.background
         }
-        .widgetURL(URL(string: "academicatelier://home"))
+        .widgetURL(summary?.homeURL ?? URL(string: "academicatelier://home")!)
     }
 }
 

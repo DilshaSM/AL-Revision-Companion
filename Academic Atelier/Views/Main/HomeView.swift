@@ -164,7 +164,9 @@ private extension HomeView {
 
                 SmallBlueButton(
                     title: dashboard.continueLearning.actionTitle,
-                    action: actions.onTapContinueLearning
+                    action: {
+                        actions.onTapContinueLearning(dashboard.continueLearning)
+                    }
                 )
             }
 
@@ -232,7 +234,9 @@ private extension HomeView {
 
                 WhiteFocusButton(
                     title: dashboard.todaysFocus.actionTitle,
-                    action: actions.onTapTodaysFocus
+                    action: {
+                        actions.onTapTodaysFocus(dashboard.todaysFocus)
+                    }
                 )
                     .padding(.top, 24)
             }
@@ -370,7 +374,9 @@ private extension HomeView {
 
             DangerActionButton(
                 title: dashboard.weakness.actionTitle,
-                action: actions.onTapWeakness
+                action: {
+                    actions.onTapWeakness(dashboard.weakness)
+                }
             )
         }
         .padding(25)
@@ -391,13 +397,17 @@ private extension HomeView {
                     if !dashboard.recentSubjects.compactCards.isEmpty {
                         HStack(spacing: 16) {
                             ForEach(dashboard.recentSubjects.compactCards) { subject in
-                                SubjectCard(subject: subject)
+                                SubjectCard(subject: subject) {
+                                    actions.onTapRecentSubject(subject)
+                                }
                             }
                         }
                     }
 
                     if let featuredCard = dashboard.recentSubjects.featuredCard {
-                        BiologySubjectCard(subject: featuredCard)
+                        BiologySubjectCard(subject: featuredCard) {
+                            actions.onTapFeaturedRecentSubject(featuredCard)
+                        }
                     }
                 }
             }
@@ -427,11 +437,13 @@ private extension HomeView {
 // MARK: - Helpers
 struct HomeViewActions {
     var onTapSettings: () -> Void = {}
-    var onTapContinueLearning: () -> Void = {}
-    var onTapTodaysFocus: () -> Void = {}
+    var onTapContinueLearning: (HomeDashboardContent.ContinueLearningContent) -> Void = { _ in }
+    var onTapTodaysFocus: (HomeDashboardContent.TodaysFocusContent) -> Void = { _ in }
     var onTapWeeklyProgress: () -> Void = {}
-    var onTapWeakness: () -> Void = {}
+    var onTapWeakness: (HomeDashboardContent.WeaknessContent) -> Void = { _ in }
     var onTapQuickTool: (HomeDashboardContent.QuickToolContent) -> Void = { _ in }
+    var onTapRecentSubject: (HomeDashboardContent.CompactRecentSubjectContent) -> Void = { _ in }
+    var onTapFeaturedRecentSubject: (HomeDashboardContent.FeaturedRecentSubjectContent) -> Void = { _ in }
 }
 
 private extension View {
@@ -610,9 +622,11 @@ private struct QuickToolCard: View {
 
 private struct SubjectCard: View {
     let subject: HomeDashboardContent.CompactRecentSubjectContent
+    let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 16) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(HomePalette.accentTint(for: subject.accentStyle))
@@ -621,58 +635,6 @@ private struct SubjectCard: View {
 
                     Image(systemName: subject.icon)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
-                        .accessibilityHidden(true)
-                }
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(subject.title)
-                    .font(AppTypography.homeBody)
-                    .foregroundStyle(HomePalette.ink)
-
-                Text(subject.detail)
-                    .font(AppTypography.homeMeta)
-                    .foregroundStyle(HomePalette.muted.opacity(0.7))
-                    .padding(.top, 1)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(subject.progressText)
-                    .font(AppTypography.homeMeta)
-                    .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
-
-                HomeProgressTrack(
-                    value: subject.progress,
-                    tint: HomePalette.accent(for: subject.accentStyle),
-                    background: HomePalette.soft,
-                    height: 4
-                )
-                .frame(width: 90)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 184, alignment: .topLeading)
-        .padding(21)
-        .homeCardStyle(cornerRadius: 20)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(subject.title)
-        .accessibilityValue("\(subject.detail). \(subject.progressText)")
-    }
-}
-
-private struct BiologySubjectCard: View {
-    let subject: HomeDashboardContent.FeaturedRecentSubjectContent
-
-    var body: some View {
-        HStack {
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(HomePalette.accentTint(for: subject.accentStyle))
-                        .frame(width: 48, height: 48)
-                        .accessibilityHidden(true)
-
-                    Image(systemName: subject.icon)
-                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
                         .accessibilityHidden(true)
                 }
@@ -687,27 +649,87 @@ private struct BiologySubjectCard: View {
                         .foregroundStyle(HomePalette.muted.opacity(0.7))
                         .padding(.top, 1)
                 }
-            }
 
-            Spacer(minLength: 16)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(subject.progressText)
+                        .font(AppTypography.homeMeta)
+                        .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
 
-            VStack(alignment: .trailing, spacing: 0.5) {
-                Text(subject.valueText)
-                    .font(AppTypography.homeMetricSmall)
-                    .foregroundStyle(HomePalette.brand)
-
-                Text(subject.trailingLabel)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(HomePalette.muted.opacity(0.6))
-                    .tracking(0.9)
+                    HomeProgressTrack(
+                        value: subject.progress,
+                        tint: HomePalette.accent(for: subject.accentStyle),
+                        background: HomePalette.soft,
+                        height: 4
+                    )
+                    .frame(width: 90)
+                }
             }
         }
+        .frame(maxWidth: .infinity, minHeight: 184, alignment: .topLeading)
         .padding(21)
-        .frame(maxWidth: .infinity, minHeight: 90)
         .homeCardStyle(cornerRadius: 20)
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(subject.title)
+        .accessibilityValue("\(subject.detail). \(subject.progressText)")
+        .accessibilityHint("Open this subject.")
+    }
+}
+
+private struct BiologySubjectCard: View {
+    let subject: HomeDashboardContent.FeaturedRecentSubjectContent
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                HStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(HomePalette.accentTint(for: subject.accentStyle))
+                            .frame(width: 48, height: 48)
+                            .accessibilityHidden(true)
+
+                        Image(systemName: subject.icon)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(HomePalette.accent(for: subject.accentStyle))
+                            .accessibilityHidden(true)
+                    }
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(subject.title)
+                            .font(AppTypography.homeBody)
+                            .foregroundStyle(HomePalette.ink)
+
+                        Text(subject.detail)
+                            .font(AppTypography.homeMeta)
+                            .foregroundStyle(HomePalette.muted.opacity(0.7))
+                            .padding(.top, 1)
+                    }
+                }
+
+                Spacer(minLength: 16)
+
+                VStack(alignment: .trailing, spacing: 0.5) {
+                    Text(subject.valueText)
+                        .font(AppTypography.homeMetricSmall)
+                        .foregroundStyle(HomePalette.brand)
+
+                    Text(subject.trailingLabel)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(HomePalette.muted.opacity(0.6))
+                        .tracking(0.9)
+                }
+            }
+            .padding(21)
+            .frame(maxWidth: .infinity, minHeight: 90)
+            .homeCardStyle(cornerRadius: 20)
+        }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(subject.title)
         .accessibilityValue("\(subject.detail). \(subject.valueText). \(subject.trailingLabel)")
+        .accessibilityHint("Open this subject.")
     }
 }
 

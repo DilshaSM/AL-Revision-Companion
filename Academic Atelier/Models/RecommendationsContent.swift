@@ -66,7 +66,9 @@ struct RecommendationsContent: Hashable {
                     summary: recommendation.reason,
                     primaryActionTitle: "Start Revision",
                     durationText: "\(max(recommendation.estimatedMinutes, 0)) MIN",
-                    scoreText: "Priority \(recommendation.priorityScore)"
+                    scoreText: "Priority \(recommendation.priorityScore)",
+                    subjectId: recommendation.subjectId,
+                    topicId: recommendation.topicId
                 )
             }
         )
@@ -104,5 +106,7 @@ extension RecommendationsContent {
         var primaryActionTitle: String? = nil
         var durationText: String? = nil
         var scoreText: String? = nil
+        var subjectId: Int? = nil
+        var topicId: Int? = nil
     }
 }

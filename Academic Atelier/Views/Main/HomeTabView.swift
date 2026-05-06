@@ -1,14 +1,20 @@
 import SwiftUI
 
 struct HomeTabView: View {
+    @EnvironmentObject private var router: AppRouter
     @State private var path: [HomeTabRoute] = []
 
     var body: some View {
         NavigationStack(path: $path) {
             HomeView(
                 actions: .init(
+                    onTapContinueLearning: handleContinueLearningTap,
+                    onTapTodaysFocus: handleTodaysFocusTap,
                     onTapWeeklyProgress: handleWeeklyProgressTap,
-                    onTapQuickTool: handleQuickToolTap
+                    onTapWeakness: handleWeaknessTap,
+                    onTapQuickTool: handleQuickToolTap,
+                    onTapRecentSubject: handleRecentSubjectTap,
+                    onTapFeaturedRecentSubject: handleFeaturedRecentSubjectTap
                 )
             )
             .navigationDestination(for: HomeTabRoute.self) { destination in
@@ -77,6 +83,42 @@ struct HomeTabView: View {
 
     private func handleWeeklyProgressTap() {
         path.append(.progressInsights)
+    }
+
+    private func handleContinueLearningTap(_ content: HomeDashboardContent.ContinueLearningContent) {
+        router.handle(
+            .continueLearning(
+                subjectId: content.subjectId,
+                lessonId: content.lessonId,
+                topicId: content.topicId
+            )
+        )
+    }
+
+    private func handleTodaysFocusTap(_ content: HomeDashboardContent.TodaysFocusContent) {
+        router.handle(
+            .recommendation(
+                subjectId: content.subjectId,
+                topicId: content.topicId
+            )
+        )
+    }
+
+    private func handleWeaknessTap(_ content: HomeDashboardContent.WeaknessContent) {
+        router.handle(
+            .recommendation(
+                subjectId: content.subjectId,
+                topicId: content.topicId
+            )
+        )
+    }
+
+    private func handleRecentSubjectTap(_ subject: HomeDashboardContent.CompactRecentSubjectContent) {
+        router.handle(.subject(subjectId: subject.subjectId))
+    }
+
+    private func handleFeaturedRecentSubjectTap(_ subject: HomeDashboardContent.FeaturedRecentSubjectContent) {
+        router.handle(.subject(subjectId: subject.subjectId))
     }
 
     private func handleProgressSubjectTap(_ subjectMastery: ProgressTabContent.SubjectMastery) {
