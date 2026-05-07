@@ -9,10 +9,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if session.isRestoringSession {
-                ProgressView("Loading session...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(AppColors.background.ignoresSafeArea())
-                    .accessibilityLabel("Loading session")
+                StartupSplashView()
             } else {
                 switch session.authRoute {
                 case .signIn:

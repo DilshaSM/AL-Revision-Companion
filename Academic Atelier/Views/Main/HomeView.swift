@@ -100,18 +100,6 @@ private extension HomeView {
                     .foregroundStyle(HomePalette.brand)
 
                 Spacer()
-
-                Button {
-                    actions.onTapSettings()
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(HomePalette.muted)
-                        .frame(width: 32, height: 32)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Settings")
-                .accessibilityHint("Open profile settings.")
             }
             .padding(.leading, 24)
             .padding(.trailing, 24)
@@ -442,7 +430,6 @@ private extension HomeView {
 
 // MARK: - Helpers
 struct HomeViewActions {
-    var onTapSettings: () -> Void = {}
     var onTapContinueLearning: (HomeDashboardContent.ContinueLearningContent) -> Void = { _ in }
     var onTapTodaysFocus: (HomeDashboardContent.TodaysFocusContent) -> Void = { _ in }
     var onTapWeeklyProgress: () -> Void = {}
