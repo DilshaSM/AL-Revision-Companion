@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 @MainActor
 final class SessionViewModel: ObservableObject {
@@ -21,6 +22,8 @@ final class SessionViewModel: ObservableObject {
     private let profileService: ProfileService
     private let biometricAuthService: BiometricAuthService
     private let widgetSummarySyncService: WidgetSummarySyncService
+    private var modelContext: ModelContext?
+    private var hasConfiguredModelContext = false
 
     init(
         storage: LocalStorageService = .shared,
@@ -58,6 +61,23 @@ final class SessionViewModel: ObservableObject {
 
     var biometricButtonSubtitle: String {
         "Use \(biometricType.displayName) for faster access"
+    }
+
+    func configure(modelContext: ModelContext) {
+        self.modelContext = modelContext
+
+        if currentUser == nil {
+            try? LocalPersistenceService(context: modelContext).clearUserSpecificData()
+        }
+
+        guard !hasConfiguredModelContext else { return }
+        hasConfiguredModelContext = true
+
+        guard currentUser != nil else { return }
+
+        Task { [weak self] in
+            await self?.refreshWidgetSummary()
+        }
     }
 
     func showSignIn() {
@@ -172,7 +192,7 @@ final class SessionViewModel: ObservableObject {
             applyAuthenticatedUser(user)
             availableStreams = []
             authRoute = .main
-            try? await widgetSummarySyncService.refresh()
+            await refreshWidgetSummary()
         } catch let error as APIError {
             if error.requiresSignOut {
                 clearStoredSession()
@@ -263,7 +283,7 @@ final class SessionViewModel: ObservableObject {
             let hydratedUser = try await hydrateSelectedStreamIfNeeded(for: refreshedPayload.user)
             applyAuthenticatedUser(hydratedUser)
             synchronizeBiometricTokenWithCurrentPreferences()
-            try? await widgetSummarySyncService.refresh()
+            await refreshWidgetSummary()
         } catch let error as APIError {
             if error.requiresSignOut {
                 clearStoredSession()
@@ -273,12 +293,12 @@ final class SessionViewModel: ObservableObject {
             let hydratedUser = try? await hydrateSelectedStreamIfNeeded(for: payload.user)
             applyAuthenticatedUser(hydratedUser ?? payload.user)
             synchronizeBiometricTokenWithCurrentPreferences()
-            try? await widgetSummarySyncService.refresh()
+            await refreshWidgetSummary()
         } catch {
             let hydratedUser = try? await hydrateSelectedStreamIfNeeded(for: payload.user)
             applyAuthenticatedUser(hydratedUser ?? payload.user)
             synchronizeBiometricTokenWithCurrentPreferences()
-            try? await widgetSummarySyncService.refresh()
+            await refreshWidgetSummary()
         }
     }
 
@@ -303,7 +323,7 @@ final class SessionViewModel: ObservableObject {
         let hydratedUser = try await hydrateSelectedStreamIfNeeded(for: payload.user)
         applyAuthenticatedUser(hydratedUser)
         synchronizeBiometricTokenWithCurrentPreferences()
-        try? await widgetSummarySyncService.refresh()
+        await refreshWidgetSummary()
 
         if hydratedUser.streamId == nil {
             await loadAvailableStreams()
@@ -414,6 +434,10 @@ final class SessionViewModel: ObservableObject {
     }
 
     private func clearStoredSession() {
+        if let modelContext {
+            try? LocalPersistenceService(context: modelContext).clearUserSpecificData()
+        }
+
         currentUser = nil
         availableStreams = []
         profileSettings = .init()
@@ -425,6 +449,10 @@ final class SessionViewModel: ObservableObject {
         NotificationService.shared.cancelRevisionNotifications()
         widgetSummarySyncService.clear()
         authRoute = .signIn
+    }
+
+    private func refreshWidgetSummary() async {
+        try? await widgetSummarySyncService.refresh(context: modelContext)
     }
 
     private func updateRoute(for user: User?) {

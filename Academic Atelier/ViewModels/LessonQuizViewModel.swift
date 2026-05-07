@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 @MainActor
 final class LessonQuizViewModel: ObservableObject {
@@ -53,7 +54,8 @@ final class LessonQuizViewModel: ObservableObject {
     func submit(
         content: LessonQuizContent,
         selectedOptionIDsByQuestionID: [Int: Int?],
-        notificationsEnabled: Bool
+        notificationsEnabled: Bool,
+        modelContext: ModelContext? = nil
     ) async -> QuizResultContent? {
         guard let attemptID else {
             errorMessage = "The quiz attempt is not ready yet. Please try again."
@@ -80,7 +82,7 @@ final class LessonQuizViewModel: ObservableObject {
                 answers: answers
             )
 
-            try? await widgetSummarySyncService.refresh()
+            try? await widgetSummarySyncService.refresh(context: modelContext)
 
             if notificationsEnabled {
                 let dashboardPayload = try? await dashboardService.getHome()

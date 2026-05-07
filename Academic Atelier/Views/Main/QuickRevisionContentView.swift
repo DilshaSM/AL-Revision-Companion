@@ -1,7 +1,9 @@
+import SwiftData
 import SwiftUI
 
 struct QuickRevisionContentView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
     @StateObject private var viewModel = QuickRevisionContentViewModel()
@@ -176,6 +178,14 @@ private extension QuickRevisionContentView {
         if viewModel.requiresSignOut {
             session.signOut()
         } else if didLoad {
+            try? LocalPersistenceService(context: modelContext).saveStudyActivity(
+                activityType: "quickRevision",
+                subjectId: viewModel.content?.subjectID,
+                subjectName: viewModel.content?.subjectName ?? nil,
+                topicId: topic.baseTopicID,
+                topicTitle: topic.title,
+                durationMinutes: 1
+            )
             refreshCenter.didRecordStudyActivity()
         }
     }

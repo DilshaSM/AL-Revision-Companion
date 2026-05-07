@@ -1,7 +1,9 @@
+import SwiftData
 import SwiftUI
 
 struct FlashcardsSessionView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
@@ -406,6 +408,14 @@ private extension FlashcardsSessionView {
         if viewModel.requiresSignOut {
             session.signOut()
         } else if didComplete {
+            try? LocalPersistenceService(context: modelContext).saveStudyActivity(
+                activityType: "flashcards",
+                subjectId: viewModel.content.subjectId,
+                subjectName: viewModel.content.subjectName,
+                topicId: viewModel.content.topicId,
+                topicTitle: viewModel.content.topicTitle,
+                durationMinutes: max(viewModel.totalCards, 1)
+            )
             refreshCenter.didRecordStudyActivity()
         } else {
             Task { @MainActor in

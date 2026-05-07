@@ -1,7 +1,9 @@
+import SwiftData
 import SwiftUI
 
 struct AudioNotesDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
@@ -480,13 +482,19 @@ private extension AudioNotesDetailView {
         }
 
         guard let content = viewModel.content else { return }
+        let localPersistence = LocalPersistenceService(context: modelContext)
+        let localAudioProgress = try? localPersistence.loadAudioProgress(audioNoteId: note.id)
+        let initialElapsedSeconds = localAudioProgress?.isCompleted == true
+            ? 0
+            : (localAudioProgress?.lastPositionSeconds ?? content.elapsedSeconds)
+        let initialPlaybackSpeed = localAudioProgress?.playbackSpeed ?? content.playbackSpeed
         playbackController.configure(
             sourceURL: content.audioURL,
-            initialElapsed: Double(content.elapsedSeconds),
+            initialElapsed: Double(initialElapsedSeconds),
             initialDuration: Double(content.totalSeconds),
-            playbackRate: Float(content.playbackSpeed)
+            playbackRate: Float(initialPlaybackSpeed)
         )
-        lastSavedPositionSeconds = content.elapsedSeconds
+        lastSavedPositionSeconds = initialElapsedSeconds
         listeningStartedAt = nil
         pendingListenedSeconds = 0
         hasConfiguredPlayer = true
@@ -548,9 +556,29 @@ private extension AudioNotesDetailView {
             return
         }
 
+        try? LocalPersistenceService(context: modelContext).saveAudioProgress(
+            audioNoteId: content.id,
+            title: content.lessonTitle,
+            lastPositionSeconds: ended ? content.totalSeconds : positionSeconds,
+            durationSeconds: content.totalSeconds,
+            playbackSpeed: content.playbackSpeed,
+            isCompleted: ended,
+            needsSync: !didSave
+        )
+
         guard didSave else { return }
 
+        try? LocalPersistenceService(context: modelContext).markAudioProgressSynced(audioNoteId: content.id)
+
         if ended || durationMinutes > 0 {
+            try? LocalPersistenceService(context: modelContext).saveStudyActivity(
+                activityType: "audioNote",
+                subjectId: content.subjectID,
+                subjectName: note.subjectName,
+                topicId: content.topicID,
+                topicTitle: content.lessonTitle,
+                durationMinutes: durationMinutes > 0 ? durationMinutes : 1
+            )
             refreshCenter.didRecordStudyActivity()
         }
 

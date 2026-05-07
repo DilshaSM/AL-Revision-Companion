@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 @main
@@ -13,5 +14,11 @@ struct ALRevisionCompanionApp: App {
                 .environmentObject(refreshCenter)
                 .environmentObject(router)
         }
+        .modelContainer(for: [
+            WidgetSummaryEntity.self,
+            RecentStudyActivityEntity.self,
+            AudioProgressEntity.self,
+            RecentSubjectEntity.self
+        ])
     }
 }

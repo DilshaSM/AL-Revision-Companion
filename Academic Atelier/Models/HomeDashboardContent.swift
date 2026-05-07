@@ -498,3 +498,55 @@ private extension HomeDashboardContent {
         return trimmed
     }
 }
+
+extension HomeDashboardContent {
+    func applyingLocalRecentSubjects(
+        _ subjects: [RecentSubjectEntity],
+        date: Date = Date()
+    ) -> HomeDashboardContent {
+        var updated = self
+        updated.recentSubjects = Self.localRecentSubjectsContent(from: subjects, date: date)
+        return updated
+    }
+
+    static func localRecentSubjectsContent(
+        from subjects: [RecentSubjectEntity],
+        date: Date = Date()
+    ) -> RecentSubjectsContent {
+        let cards = subjects.prefix(5).enumerated().map { index, subject in
+            CompactRecentSubjectContent(
+                id: "local-\(subject.subjectId)-\(index)",
+                subjectId: subject.subjectId,
+                title: subject.subjectName,
+                detail: relativeRecentSubjectText(from: subject.lastOpenedAt, now: date),
+                progress: 0,
+                progressText: "RECENT",
+                icon: subject.icon ?? "book.fill",
+                accentStyle: accentStyle(for: subject)
+            )
+        }
+
+        return .init(compactCards: cards, featuredCard: nil)
+    }
+
+    private static func accentStyle(for subject: RecentSubjectEntity) -> HomeAccentStyle {
+        let icon = subject.icon?.lowercased() ?? ""
+        let name = subject.subjectName.lowercased()
+
+        if icon.contains("leaf") || name.contains("bio") {
+            return .biology
+        }
+
+        if icon.contains("flask") || name.contains("chem") {
+            return .orange
+        }
+
+        return .blue
+    }
+
+    private static func relativeRecentSubjectText(from date: Date, now: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: now).uppercased()
+    }
+}

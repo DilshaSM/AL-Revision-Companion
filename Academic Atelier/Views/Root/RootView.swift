@@ -1,6 +1,8 @@
+import SwiftData
 import SwiftUI
 
 struct RootView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var session: SessionViewModel
     @EnvironmentObject private var router: AppRouter
 
@@ -32,6 +34,9 @@ struct RootView: View {
                     MainTabView()
                 }
             }
+        }
+        .task {
+            session.configure(modelContext: modelContext)
         }
         .onOpenURL { url in
             guard let deepLink = AppDeepLink.parse(url) else { return }

@@ -1,6 +1,8 @@
+import SwiftData
 import SwiftUI
 
 struct HomeView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
     @StateObject private var dashboardViewModel = HomeDashboardViewModel()
@@ -65,7 +67,11 @@ struct HomeView: View {
     private func loadDashboard(forceRefresh: Bool = false) async {
         guard providedContent == nil else { return }
 
-        await dashboardViewModel.load(for: session.currentUser, forceRefresh: forceRefresh)
+        await dashboardViewModel.load(
+            for: session.currentUser,
+            forceRefresh: forceRefresh,
+            modelContext: modelContext
+        )
 
         if dashboardViewModel.requiresSignOut {
             session.signOut()

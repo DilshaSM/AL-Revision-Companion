@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 struct WidgetSummaryService {
     private let client: APIClient
@@ -28,9 +29,16 @@ struct WidgetSummarySyncService {
         self.widgetCacheService = widgetCacheService
     }
 
-    func refresh() async throws {
+    @MainActor
+    func refresh(context: ModelContext? = nil) async throws {
         let payload = try await widgetSummaryService.getWidgetSummary()
         widgetCacheService.save(CachedWidgetSummary(payload: payload))
+
+        if let context {
+            try LocalPersistenceService(context: context).saveWidgetSummary(
+                WidgetSummaryEntity(payload: payload)
+            )
+        }
     }
 
     func clear() {

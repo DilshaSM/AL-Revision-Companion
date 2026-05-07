@@ -1,7 +1,9 @@
+import SwiftData
 import SwiftUI
 
 struct SubjectLessonsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
@@ -52,6 +54,14 @@ struct SubjectLessonsView: View {
         .toolbar(.hidden, for: .tabBar)
         .task(id: refreshCenter.subjectsToken) {
             await load(forceRefresh: viewModel.content != nil)
+        }
+        .task(id: subject.id) {
+            try? LocalPersistenceService(context: modelContext).saveRecentSubject(
+                subjectId: subject.id,
+                subjectName: subject.title,
+                icon: subject.iconSystemName,
+                color: subject.tintHex
+            )
         }
         .onAppear {
             focusedElement = .title
@@ -287,6 +297,13 @@ private extension SubjectLessonsView {
                 return
             }
 
+            try? LocalPersistenceService(context: modelContext).saveStudyActivity(
+                activityType: "lessonOpened",
+                subjectId: subject.id,
+                subjectName: subject.title,
+                topicId: quizContent.topicID,
+                topicTitle: quizContent.topicTitle
+            )
             refreshCenter.didOpenLesson()
             actions.onOpenQuiz(quizContent)
         }

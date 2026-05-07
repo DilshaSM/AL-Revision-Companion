@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 @MainActor
 final class HomeDashboardViewModel: ObservableObject {
@@ -19,6 +20,10 @@ final class HomeDashboardViewModel: ObservableObject {
     }
 
     func load(for user: User?, forceRefresh: Bool = false) async {
+        await load(for: user, forceRefresh: forceRefresh, modelContext: nil)
+    }
+
+    func load(for user: User?, forceRefresh: Bool = false, modelContext: ModelContext?) async {
         guard forceRefresh || content == nil else { return }
 
         isLoading = true
@@ -29,8 +34,17 @@ final class HomeDashboardViewModel: ObservableObject {
 
         do {
             let payload = try await service.getHome()
-            content = .dashboard(from: payload, for: user)
-            try? await widgetSummarySyncService.refresh()
+            var dashboard = HomeDashboardContent.dashboard(from: payload, for: user)
+
+            if dashboard.recentSubjects.isEmpty,
+               let modelContext,
+               let localSubjects = try? LocalPersistenceService(context: modelContext).loadRecentSubjects(),
+               !localSubjects.isEmpty {
+                dashboard = dashboard.applyingLocalRecentSubjects(localSubjects)
+            }
+
+            content = dashboard
+            try? await widgetSummarySyncService.refresh(context: modelContext)
 
             if user?.preference?.areNotificationsEnabled == true {
                 try? await RevisionNotificationScheduler().rescheduleNotifications(
@@ -42,9 +56,25 @@ final class HomeDashboardViewModel: ObservableObject {
             if error.requiresSignOut {
                 requiresSignOut = true
             } else {
+                if content == nil,
+                   let modelContext,
+                   let localSubjects = try? LocalPersistenceService(context: modelContext).loadRecentSubjects(),
+                   !localSubjects.isEmpty {
+                    content = HomeDashboardContent
+                        .placeholder(for: user)
+                        .applyingLocalRecentSubjects(localSubjects)
+                }
                 errorMessage = error.localizedDescription
             }
         } catch {
+            if content == nil,
+               let modelContext,
+               let localSubjects = try? LocalPersistenceService(context: modelContext).loadRecentSubjects(),
+               !localSubjects.isEmpty {
+                content = HomeDashboardContent
+                    .placeholder(for: user)
+                    .applyingLocalRecentSubjects(localSubjects)
+            }
             errorMessage = error.localizedDescription
         }
     }

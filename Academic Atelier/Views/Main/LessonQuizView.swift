@@ -1,7 +1,9 @@
+import SwiftData
 import SwiftUI
 
 struct LessonQuizView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
 
@@ -341,7 +343,8 @@ private extension LessonQuizView {
                 guard let result = await viewModel.submit(
                     content: content,
                     selectedOptionIDsByQuestionID: answers,
-                    notificationsEnabled: session.currentUser?.preference?.areNotificationsEnabled == true
+                    notificationsEnabled: session.currentUser?.preference?.areNotificationsEnabled == true,
+                    modelContext: modelContext
                 ) else {
                     if viewModel.requiresSignOut {
                         session.signOut()
@@ -349,6 +352,14 @@ private extension LessonQuizView {
                     return
                 }
 
+                try? LocalPersistenceService(context: modelContext).saveStudyActivity(
+                    activityType: "quiz",
+                    subjectId: content.subjectID,
+                    subjectName: content.subjectTitle,
+                    topicId: content.topicID,
+                    topicTitle: content.topicTitle,
+                    durationMinutes: quizDurationMinutes(from: result.timeTakenText)
+                )
                 refreshCenter.didSubmitQuiz()
                 actions.onComplete(result)
             }
@@ -362,6 +373,21 @@ private extension LessonQuizView {
 
     func formattedQuestionNumber(_ value: Int) -> String {
         String(format: "%02d", value)
+    }
+
+    func quizDurationMinutes(from timeTakenText: String) -> Int? {
+        let parts = timeTakenText
+            .replacingOccurrences(of: "m", with: "")
+            .split(separator: "s")
+            .first?
+            .trimmingCharacters(in: .whitespaces)
+
+        guard let minutesPart = parts?.split(separator: " ").first,
+              let minutes = Int(minutesPart) else {
+            return nil
+        }
+
+        return max(minutes, 1)
     }
 }
 

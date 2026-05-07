@@ -3,6 +3,7 @@ import Foundation
 struct FlashcardsSessionContent: Hashable {
     let sessionId: Int
     let deckId: Int
+    let subjectId: Int
     let topicTitle: String
     let subjectName: String
     let topicId: Int
@@ -16,6 +17,7 @@ struct FlashcardsSessionContent: Hashable {
         FlashcardsSessionContent(
             sessionId: payload.sessionId,
             deckId: payload.deck.id,
+            subjectId: deck.subjectId,
             topicTitle: payload.deck.title,
             subjectName: deck.subjectName,
             topicId: deck.topicId,
