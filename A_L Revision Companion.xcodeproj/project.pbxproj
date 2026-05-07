@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7B4A10012F923FC200B4E3D3 /* AcademicAtelierWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */; };
-		7B4A10042F923FC200B4E3D3 /* AcademicAtelierWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10032F923FC200B4E3D3 /* AcademicAtelierWidget.swift */; };
+		7B4A10012F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 7B4A10002F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex */; };
+		7B4A10042F923FC200B4E3D3 /* ALRevisionCompanionWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10032F923FC200B4E3D3 /* ALRevisionCompanionWidget.swift */; };
 		7B4A10062F923FC200B4E3D3 /* WidgetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */; };
 		7B4A10082F923FC200B4E3D3 /* WidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */; };
 		7B4A100A2F923FC200B4E3D3 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A10092F923FC200B4E3D3 /* WidgetViews.swift */; };
-		7B4A100C2F923FC200B4E3D3 /* Academic Atelier/Models/WidgetSummaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A100B2F923FC200B4E3D3 /* Academic Atelier/Models/WidgetSummaryModels.swift */; };
-		7B4A100E2F923FC200B4E3D3 /* Academic Atelier/Services/WidgetCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A100D2F923FC200B4E3D3 /* Academic Atelier/Services/WidgetCacheService.swift */; };
+		7B4A100C2F923FC200B4E3D3 /* A_L Revision Companion/Models/WidgetSummaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A100B2F923FC200B4E3D3 /* A_L Revision Companion/Models/WidgetSummaryModels.swift */; };
+		7B4A100E2F923FC200B4E3D3 /* A_L Revision Companion/Services/WidgetCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4A100D2F923FC200B4E3D3 /* A_L Revision Companion/Services/WidgetCacheService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -22,21 +22,21 @@
 			containerPortal = 39F8AECF2F923FBF00B4E3D3 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 39F8AED62F923FBF00B4E3D3;
-			remoteInfo = "AL Revision Companion";
+			remoteInfo = "A_L Revision Companion";
 		};
 		39F8AEF12F923FC200B4E3D3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 39F8AECF2F923FBF00B4E3D3 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 39F8AED62F923FBF00B4E3D3;
-			remoteInfo = "AL Revision Companion";
+			remoteInfo = "A_L Revision Companion";
 		};
 		7B4A101C2F923FC200B4E3D3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 39F8AECF2F923FBF00B4E3D3 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 7B4A10122F923FC200B4E3D3;
-			remoteInfo = AcademicAtelierWidgetExtension;
+			remoteInfo = ALRevisionCompanionWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -47,7 +47,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				7B4A10012F923FC200B4E3D3 /* AcademicAtelierWidget.appex in Embed App Extensions */,
+				7B4A10012F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -55,32 +55,32 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		39F8AED72F923FBF00B4E3D3 /* AL Revision Companion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AL Revision Companion.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		39F8AEE62F923FC200B4E3D3 /* AL Revision CompanionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AL Revision CompanionTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		39F8AEF02F923FC200B4E3D3 /* AL Revision CompanionUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AL Revision CompanionUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = AcademicAtelierWidget.appex; path = AcademicAtelierWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		7B4A10032F923FC200B4E3D3 /* AcademicAtelierWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcademicAtelierWidget.swift; sourceTree = "<group>"; };
+		39F8AED72F923FBF00B4E3D3 /* A_L Revision Companion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "A_L Revision Companion.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		39F8AEE62F923FC200B4E3D3 /* A_L Revision CompanionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "A_L Revision CompanionTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		39F8AEF02F923FC200B4E3D3 /* A_L Revision CompanionUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "A_L Revision CompanionUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7B4A10002F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = ALRevisionCompanionWidget.appex; path = ALRevisionCompanionWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7B4A10032F923FC200B4E3D3 /* ALRevisionCompanionWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALRevisionCompanionWidget.swift; sourceTree = "<group>"; };
 		7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetEntry.swift; sourceTree = "<group>"; };
 		7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetProvider.swift; sourceTree = "<group>"; };
 		7B4A10092F923FC200B4E3D3 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
-		7B4A100B2F923FC200B4E3D3 /* Academic Atelier/Models/WidgetSummaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Academic Atelier/Models/WidgetSummaryModels.swift"; sourceTree = SOURCE_ROOT; };
-		7B4A100D2F923FC200B4E3D3 /* Academic Atelier/Services/WidgetCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Academic Atelier/Services/WidgetCacheService.swift"; sourceTree = SOURCE_ROOT; };
+		7B4A100B2F923FC200B4E3D3 /* A_L Revision Companion/Models/WidgetSummaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "A_L Revision Companion/Models/WidgetSummaryModels.swift"; sourceTree = SOURCE_ROOT; };
+		7B4A100D2F923FC200B4E3D3 /* A_L Revision Companion/Services/WidgetCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "A_L Revision Companion/Services/WidgetCacheService.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		39F8AED92F923FBF00B4E3D3 /* Academic Atelier */ = {
+		39F8AED92F923FBF00B4E3D3 /* A_L Revision Companion */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Academic Atelier";
+			path = "A_L Revision Companion";
 			sourceTree = "<group>";
 		};
-		39F8AEE92F923FC200B4E3D3 /* Academic AtelierTests */ = {
+		39F8AEE92F923FC200B4E3D3 /* A_L Revision CompanionTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Academic AtelierTests";
+			path = "A_L Revision CompanionTests";
 			sourceTree = "<group>";
 		};
-		39F8AEF32F923FC200B4E3D3 /* Academic AtelierUITests */ = {
+		39F8AEF32F923FC200B4E3D3 /* A_L Revision CompanionUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Academic AtelierUITests";
+			path = "A_L Revision CompanionUITests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -120,10 +120,10 @@
 		39F8AECE2F923FBF00B4E3D3 = {
 			isa = PBXGroup;
 			children = (
-				39F8AED92F923FBF00B4E3D3 /* Academic Atelier */,
-				7B4A10112F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */,
-				39F8AEE92F923FC200B4E3D3 /* Academic AtelierTests */,
-				39F8AEF32F923FC200B4E3D3 /* Academic AtelierUITests */,
+				39F8AED92F923FBF00B4E3D3 /* A_L Revision Companion */,
+				7B4A10112F923FC200B4E3D3 /* A_L Revision Companion Widget Extension */,
+				39F8AEE92F923FC200B4E3D3 /* A_L Revision CompanionTests */,
+				39F8AEF32F923FC200B4E3D3 /* A_L Revision CompanionUITests */,
 				39F8AED82F923FBF00B4E3D3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -131,33 +131,33 @@
 		39F8AED82F923FBF00B4E3D3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				39F8AED72F923FBF00B4E3D3 /* AL Revision Companion.app */,
-				7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */,
-				39F8AEE62F923FC200B4E3D3 /* AL Revision CompanionTests.xctest */,
-				39F8AEF02F923FC200B4E3D3 /* AL Revision CompanionUITests.xctest */,
+				39F8AED72F923FBF00B4E3D3 /* A_L Revision Companion.app */,
+				7B4A10002F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex */,
+				39F8AEE62F923FC200B4E3D3 /* A_L Revision CompanionTests.xctest */,
+				39F8AEF02F923FC200B4E3D3 /* A_L Revision CompanionUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		7B4A10112F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */ = {
+		7B4A10112F923FC200B4E3D3 /* A_L Revision Companion Widget Extension */ = {
 			isa = PBXGroup;
 			children = (
-				7B4A10032F923FC200B4E3D3 /* AcademicAtelierWidget.swift */,
+				7B4A10032F923FC200B4E3D3 /* ALRevisionCompanionWidget.swift */,
 				7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */,
 				7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */,
 				7B4A10092F923FC200B4E3D3 /* WidgetViews.swift */,
-				7B4A100B2F923FC200B4E3D3 /* Academic Atelier/Models/WidgetSummaryModels.swift */,
-				7B4A100D2F923FC200B4E3D3 /* Academic Atelier/Services/WidgetCacheService.swift */,
+				7B4A100B2F923FC200B4E3D3 /* A_L Revision Companion/Models/WidgetSummaryModels.swift */,
+				7B4A100D2F923FC200B4E3D3 /* A_L Revision Companion/Services/WidgetCacheService.swift */,
 			);
-			path = AcademicAtelierWidgetExtension;
+			path = "A_L Revision Companion Widget Extension";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */ = {
+		39F8AED62F923FBF00B4E3D3 /* A_L Revision Companion */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 39F8AEFA2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AL Revision Companion" */;
+			buildConfigurationList = 39F8AEFA2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "A_L Revision Companion" */;
 			buildPhases = (
 				39F8AED32F923FBF00B4E3D3 /* Sources */,
 				39F8AED42F923FBF00B4E3D3 /* Frameworks */,
@@ -170,18 +170,18 @@
 				7B4A101D2F923FC200B4E3D3 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				39F8AED92F923FBF00B4E3D3 /* Academic Atelier */,
+				39F8AED92F923FBF00B4E3D3 /* A_L Revision Companion */,
 			);
-			name = "AL Revision Companion";
+			name = "A_L Revision Companion";
 			packageProductDependencies = (
 			);
-			productName = "AL Revision Companion";
-			productReference = 39F8AED72F923FBF00B4E3D3 /* AL Revision Companion.app */;
+			productName = "A_L Revision Companion";
+			productReference = 39F8AED72F923FBF00B4E3D3 /* A_L Revision Companion.app */;
 			productType = "com.apple.product-type.application";
 		};
-		39F8AEE52F923FC200B4E3D3 /* AL Revision CompanionTests */ = {
+		39F8AEE52F923FC200B4E3D3 /* A_L Revision CompanionTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 39F8AEFD2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AL Revision CompanionTests" */;
+			buildConfigurationList = 39F8AEFD2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "A_L Revision CompanionTests" */;
 			buildPhases = (
 				39F8AEE22F923FC200B4E3D3 /* Sources */,
 				39F8AEE32F923FC200B4E3D3 /* Frameworks */,
@@ -193,18 +193,18 @@
 				39F8AEE82F923FC200B4E3D3 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				39F8AEE92F923FC200B4E3D3 /* Academic AtelierTests */,
+				39F8AEE92F923FC200B4E3D3 /* A_L Revision CompanionTests */,
 			);
-			name = "AL Revision CompanionTests";
+			name = "A_L Revision CompanionTests";
 			packageProductDependencies = (
 			);
-			productName = "AL Revision CompanionTests";
-			productReference = 39F8AEE62F923FC200B4E3D3 /* AL Revision CompanionTests.xctest */;
+			productName = "A_L Revision CompanionTests";
+			productReference = 39F8AEE62F923FC200B4E3D3 /* A_L Revision CompanionTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		39F8AEEF2F923FC200B4E3D3 /* AL Revision CompanionUITests */ = {
+		39F8AEEF2F923FC200B4E3D3 /* A_L Revision CompanionUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 39F8AF002F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AL Revision CompanionUITests" */;
+			buildConfigurationList = 39F8AF002F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "A_L Revision CompanionUITests" */;
 			buildPhases = (
 				39F8AEEC2F923FC200B4E3D3 /* Sources */,
 				39F8AEED2F923FC200B4E3D3 /* Frameworks */,
@@ -216,18 +216,18 @@
 				39F8AEF22F923FC200B4E3D3 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				39F8AEF32F923FC200B4E3D3 /* Academic AtelierUITests */,
+				39F8AEF32F923FC200B4E3D3 /* A_L Revision CompanionUITests */,
 			);
-			name = "AL Revision CompanionUITests";
+			name = "A_L Revision CompanionUITests";
 			packageProductDependencies = (
 			);
-			productName = "AL Revision CompanionUITests";
-			productReference = 39F8AEF02F923FC200B4E3D3 /* AL Revision CompanionUITests.xctest */;
+			productName = "A_L Revision CompanionUITests";
+			productReference = 39F8AEF02F923FC200B4E3D3 /* A_L Revision CompanionUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		7B4A10122F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */ = {
+		7B4A10122F923FC200B4E3D3 /* ALRevisionCompanionWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7B4A10192F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AcademicAtelierWidgetExtension" */;
+			buildConfigurationList = 7B4A10192F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "ALRevisionCompanionWidgetExtension" */;
 			buildPhases = (
 				7B4A10142F923FC200B4E3D3 /* Sources */,
 				7B4A10152F923FC200B4E3D3 /* Frameworks */,
@@ -237,11 +237,11 @@
 			);
 			dependencies = (
 			);
-			name = AcademicAtelierWidgetExtension;
+			name = ALRevisionCompanionWidgetExtension;
 			packageProductDependencies = (
 			);
-			productName = AcademicAtelierWidget;
-			productReference = 7B4A10002F923FC200B4E3D3 /* AcademicAtelierWidget.appex */;
+			productName = ALRevisionCompanionWidget;
+			productReference = 7B4A10002F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -270,7 +270,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "Academic Atelier" */;
+			buildConfigurationList = 39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "A_L Revision Companion" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -284,10 +284,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */,
-				7B4A10122F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */,
-				39F8AEE52F923FC200B4E3D3 /* AL Revision CompanionTests */,
-				39F8AEEF2F923FC200B4E3D3 /* AL Revision CompanionUITests */,
+				39F8AED62F923FBF00B4E3D3 /* A_L Revision Companion */,
+				7B4A10122F923FC200B4E3D3 /* ALRevisionCompanionWidgetExtension */,
+				39F8AEE52F923FC200B4E3D3 /* A_L Revision CompanionTests */,
+				39F8AEEF2F923FC200B4E3D3 /* A_L Revision CompanionUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -349,12 +349,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7B4A10042F923FC200B4E3D3 /* AcademicAtelierWidget.swift in Sources */,
+				7B4A10042F923FC200B4E3D3 /* ALRevisionCompanionWidget.swift in Sources */,
 				7B4A10062F923FC200B4E3D3 /* WidgetEntry.swift in Sources */,
 				7B4A10082F923FC200B4E3D3 /* WidgetProvider.swift in Sources */,
 				7B4A100A2F923FC200B4E3D3 /* WidgetViews.swift in Sources */,
-				7B4A100C2F923FC200B4E3D3 /* Academic Atelier/Models/WidgetSummaryModels.swift in Sources */,
-				7B4A100E2F923FC200B4E3D3 /* Academic Atelier/Services/WidgetCacheService.swift in Sources */,
+				7B4A100C2F923FC200B4E3D3 /* A_L Revision Companion/Models/WidgetSummaryModels.swift in Sources */,
+				7B4A100E2F923FC200B4E3D3 /* A_L Revision Companion/Services/WidgetCacheService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,17 +363,17 @@
 /* Begin PBXTargetDependency section */
 		39F8AEE82F923FC200B4E3D3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */;
+			target = 39F8AED62F923FBF00B4E3D3 /* A_L Revision Companion */;
 			targetProxy = 39F8AEE72F923FC200B4E3D3 /* PBXContainerItemProxy */;
 		};
 		39F8AEF22F923FC200B4E3D3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 39F8AED62F923FBF00B4E3D3 /* AL Revision Companion */;
+			target = 39F8AED62F923FBF00B4E3D3 /* A_L Revision Companion */;
 			targetProxy = 39F8AEF12F923FC200B4E3D3 /* PBXContainerItemProxy */;
 		};
 		7B4A101D2F923FC200B4E3D3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7B4A10122F923FC200B4E3D3 /* AcademicAtelierWidgetExtension */;
+			target = 7B4A10122F923FC200B4E3D3 /* ALRevisionCompanionWidgetExtension */;
 			targetProxy = 7B4A101C2F923FC200B4E3D3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -503,7 +503,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Academic Atelier/AcademicAtelier.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "A_L Revision Companion/A_L Revision Companion.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -540,7 +540,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Academic Atelier/AcademicAtelier.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "A_L Revision Companion/A_L Revision Companion.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -586,7 +586,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AL Revision Companion.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AL Revision Companion";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/A_L Revision Companion.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/A_L Revision Companion";
 			};
 			name = Debug;
 		};
@@ -604,7 +604,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AL Revision Companion.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AL Revision Companion";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/A_L Revision Companion.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/A_L Revision Companion";
 			};
 			name = Release;
 		};
@@ -620,7 +620,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "AL Revision Companion";
+				TEST_TARGET_NAME = "A_L Revision Companion";
 			};
 			name = Debug;
 		};
@@ -636,7 +636,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "AL Revision Companion";
+				TEST_TARGET_NAME = "A_L Revision Companion";
 			};
 			name = Release;
 		};
@@ -644,12 +644,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AcademicAtelierWidgetExtension/AcademicAtelierWidgetExtension.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "A_L Revision Companion Widget Extension/A_L Revision Companion Widget Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AcademicAtelierWidgetExtension/Info.plist;
+				INFOPLIST_FILE = "A_L Revision Companion Widget Extension/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -670,12 +670,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = AcademicAtelierWidgetExtension/AcademicAtelierWidgetExtension.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "A_L Revision Companion Widget Extension/A_L Revision Companion Widget Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AcademicAtelierWidgetExtension/Info.plist;
+				INFOPLIST_FILE = "A_L Revision Companion Widget Extension/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -695,7 +695,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "Academic Atelier" */ = {
+		39F8AED22F923FBF00B4E3D3 /* Build configuration list for PBXProject "A_L Revision Companion" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				39F8AEF82F923FC200B4E3D3 /* Debug */,
@@ -704,7 +704,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		39F8AEFA2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AL Revision Companion" */ = {
+		39F8AEFA2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "A_L Revision Companion" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				39F8AEFB2F923FC200B4E3D3 /* Debug */,
@@ -713,7 +713,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		39F8AEFD2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AL Revision CompanionTests" */ = {
+		39F8AEFD2F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "A_L Revision CompanionTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				39F8AEFE2F923FC200B4E3D3 /* Debug */,
@@ -722,7 +722,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		39F8AF002F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AL Revision CompanionUITests" */ = {
+		39F8AF002F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "A_L Revision CompanionUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				39F8AF012F923FC200B4E3D3 /* Debug */,
@@ -731,7 +731,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7B4A10192F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "AcademicAtelierWidgetExtension" */ = {
+		7B4A10192F923FC200B4E3D3 /* Build configuration list for PBXNativeTarget "ALRevisionCompanionWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7B4A101A2F923FC200B4E3D3 /* Debug */,

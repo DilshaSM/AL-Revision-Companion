@@ -1,6 +1,6 @@
 //
 //  ALRevisionCompanionUITestsLaunchTests.swift
-//  AL Revision CompanionUITests
+//  A/L Revision CompanionUITests
 //
 import XCTest
 
