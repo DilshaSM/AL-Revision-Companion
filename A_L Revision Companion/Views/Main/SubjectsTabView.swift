@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SubjectsTabView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
@@ -295,12 +296,16 @@ private extension SubjectsTabView {
         switch deepLink {
         case let .subject(subjectId):
             await openSubject(subjectId: subjectId)
-        case let .continueLearning(subjectId, _, _):
+        case let .continueLearning(subjectId, lessonId, topicId):
             guard let subjectId else {
                 router.clearPendingDeepLink()
                 return
             }
-            await openSubject(subjectId: subjectId)
+            await openContinueLearning(
+                subjectId: subjectId,
+                lessonId: lessonId,
+                topicId: topicId
+            )
         case let .recommendation(subjectId, _):
             guard let subjectId else {
                 router.clearPendingDeepLink()
@@ -324,6 +329,86 @@ private extension SubjectsTabView {
 
         path = [.lessons(subject)]
         router.clearPendingDeepLink()
+    }
+
+    func openContinueLearning(subjectId: Int, lessonId: Int?, topicId: Int?) async {
+        if content == nil {
+            await loadSubjects(forceRefresh: false)
+        }
+
+        guard let subject = viewModel.content?.subjects.first(where: { $0.id == subjectId }) else {
+            router.clearPendingDeepLink()
+            return
+        }
+
+        guard lessonId != nil || topicId != nil else {
+            path = [.lessons(subject)]
+            router.clearPendingDeepLink()
+            return
+        }
+
+        do {
+            let subjectTree = try await subjectsService.getSubjectUnits(subjectID: subjectId)
+            let subjectContent = SubjectLessonsContent.build(from: subjectTree)
+            let lessons = subjectContent.units.flatMap(\.lessons)
+
+            guard let targetLesson = lessons.first(where: { lesson in
+                if let lessonId, lesson.id == lessonId {
+                    return true
+                }
+
+                if let topicId, lesson.topics.contains(where: { $0.id == topicId }) {
+                    return true
+                }
+
+                return false
+            }) else {
+                path = [.lessons(subject)]
+                router.clearPendingDeepLink()
+                return
+            }
+
+            let openPayload = try await subjectsService.openLesson(lessonID: targetLesson.id)
+            let updatedSubjectContent = subjectContent.applying(progress: openPayload.lessonProgress)
+            let refreshedLesson = updatedSubjectContent.units
+                .flatMap(\.lessons)
+                .first(where: { $0.id == targetLesson.id }) ?? targetLesson
+
+            guard let targetTopic = (topicId.flatMap { requestedTopicID in
+                refreshedLesson.topics.first(where: { $0.id == requestedTopicID })
+            }) ?? refreshedLesson.firstActiveTopic else {
+                path = [.lessons(subject)]
+                router.clearPendingDeepLink()
+                return
+            }
+
+            let quizPayload = try await subjectsService.getTopicQuiz(topicID: targetTopic.id)
+            let quizContent = LessonQuizContent.build(
+                from: quizPayload,
+                lesson: refreshedLesson,
+                nextLesson: updatedSubjectContent.nextLesson(after: refreshedLesson.id)
+            )
+
+            try? LocalPersistenceService(context: modelContext).saveStudyActivity(
+                activityType: "lessonOpened",
+                subjectId: subject.id,
+                subjectName: subject.title,
+                topicId: quizContent.topicID,
+                topicTitle: quizContent.topicTitle
+            )
+
+            refreshCenter.didOpenLesson()
+            path = [.lessons(subject), .quiz(quizContent)]
+            router.clearPendingDeepLink()
+        } catch let error as APIError {
+            if error.requiresSignOut {
+                session.signOut()
+            } else {
+                routeErrorMessage = error.localizedDescription
+            }
+        } catch {
+            routeErrorMessage = error.localizedDescription
+        }
     }
 }
 

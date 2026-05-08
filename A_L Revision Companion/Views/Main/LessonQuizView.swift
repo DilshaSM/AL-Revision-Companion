@@ -15,6 +15,7 @@ struct LessonQuizView: View {
 
     @State private var currentQuestionIndex = 0
     @State private var selectedOptionIDsByQuestionID: [Int: Int] = [:]
+    @State private var progressSaveTask: Task<Void, Never>?
 
     private enum FocusTarget: Hashable {
         case title
@@ -25,6 +26,8 @@ struct LessonQuizView: View {
     init(content: LessonQuizContent, actions: LessonQuizActions = .init()) {
         self.content = content
         self.actions = actions
+        _currentQuestionIndex = State(initialValue: Self.initialQuestionIndex(for: content))
+        _selectedOptionIDsByQuestionID = State(initialValue: Self.initialSelections(for: content))
     }
 
     var body: some View {
@@ -66,8 +69,27 @@ struct LessonQuizView: View {
                 .task(id: content.quizID) {
                     await startAttempt()
                 }
+                .onChange(of: viewModel.currentAttempt) { oldAttempt, newAttempt in
+                    guard let newAttempt else { return }
+
+                    hydrateSelectionsIfNeeded(from: newAttempt)
+
+                    if oldAttempt == nil,
+                       content.resumeAttempt == nil,
+                       newAttempt.savedAnswers.isEmpty,
+                       !selectedOptionIDsByQuestionID.isEmpty {
+                        scheduleProgressSave()
+                    }
+                }
                 .onAppear {
                     focusedElement = .title
+                }
+                .onDisappear {
+                    progressSaveTask?.cancel()
+
+                    if (viewModel.currentAttempt?.progressPercent ?? 0) > 0 {
+                        refreshCenter.didSaveQuizProgress()
+                    }
                 }
                 .onChange(of: viewModel.errorMessage) { _, message in
                     guard !message.isEmpty else { return }
@@ -107,6 +129,28 @@ private extension LessonQuizView {
     var progressFraction: CGFloat {
         guard !content.questions.isEmpty else { return 0 }
         return CGFloat(currentQuestionNumber) / CGFloat(content.questions.count)
+    }
+
+    var savedProgressText: String? {
+        guard let attempt = viewModel.currentAttempt else { return nil }
+
+        let answeredCount = max(attempt.answeredCount, 0)
+        let questionCount = max(attempt.questionCount, content.questions.count)
+        let progressPercent = max(min(attempt.progressPercent, 100), 0)
+
+        if answeredCount > 0, questionCount > 0 {
+            return "\(answeredCount) of \(questionCount) answered • \(progressPercent)% saved"
+        }
+
+        if viewModel.isSavingProgress {
+            return "Saving your progress..."
+        }
+
+        if attempt.isResumed == true {
+            return "Resumed your saved quiz attempt."
+        }
+
+        return nil
     }
 
     var primaryButtonTitle: String {
@@ -215,6 +259,26 @@ private extension LessonQuizView {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityElement(children: .contain)
             .accessibilityFocused($focusedElement, equals: .status)
+        } else if let savedProgressText {
+            HStack(spacing: 10) {
+                if viewModel.isSavingProgress {
+                    ProgressView()
+                } else {
+                    Image(systemName: viewModel.currentAttempt?.isResumed == true ? "arrow.clockwise.circle.fill" : "checkmark.circle.fill")
+                        .foregroundStyle(SubjectsPalette.brand)
+                }
+
+                Text(savedProgressText)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.muted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppColors.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(savedProgressText)
+            .accessibilityFocused($focusedElement, equals: .status)
         }
     }
 
@@ -263,6 +327,7 @@ private extension LessonQuizView {
                     isSelected: selectedOptionIDsByQuestionID[currentQuestion.id] == option.id
                 ) {
                     selectedOptionIDsByQuestionID[currentQuestion.id] = option.id
+                    scheduleProgressSave()
                     Task { @MainActor in
                         AccessibilitySupport.announce("Selected answer. \(option.text)")
                     }
@@ -320,11 +385,11 @@ private extension LessonQuizView {
 
     func startAttempt(forceRestart: Bool = false) async {
         if forceRestart {
-            // Reset local state for a fresh start request.
+            progressSaveTask?.cancel()
             selectedOptionIDsByQuestionID = [:]
         }
 
-        await viewModel.startAttemptIfNeeded(for: content)
+        await viewModel.prepareAttemptIfNeeded(for: content)
 
         if viewModel.requiresSignOut {
             session.signOut()
@@ -388,6 +453,82 @@ private extension LessonQuizView {
         }
 
         return max(minutes, 1)
+    }
+
+    func hydrateSelectionsIfNeeded(from attempt: QuizAttemptState) {
+        guard selectedOptionIDsByQuestionID.isEmpty else { return }
+
+        let savedSelections: [Int: Int] = Dictionary(
+            uniqueKeysWithValues: attempt.savedAnswers.compactMap { savedAnswer in
+                guard let selectedOptionId = savedAnswer.selectedOptionId else {
+                    return nil
+                }
+
+                return (savedAnswer.questionId, selectedOptionId)
+            }
+        )
+
+        guard !savedSelections.isEmpty else { return }
+
+        selectedOptionIDsByQuestionID = savedSelections
+        currentQuestionIndex = nextQuestionIndex(for: savedSelections)
+    }
+
+    func scheduleProgressSave() {
+        progressSaveTask?.cancel()
+
+        guard !selectedOptionIDsByQuestionID.isEmpty else { return }
+
+        progressSaveTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+
+            let didSave = await viewModel.saveProgress(
+                content: content,
+                selectedOptionIDsByQuestionID: selectedOptionIDsByQuestionID
+            )
+
+            guard didSave else {
+                if viewModel.requiresSignOut {
+                    session.signOut()
+                }
+                return
+            }
+        }
+    }
+
+    func nextQuestionIndex(for selections: [Int: Int]) -> Int {
+        guard !content.questions.isEmpty else { return 0 }
+
+        if let unansweredIndex = content.questions.firstIndex(where: { selections[$0.id] == nil }) {
+            return unansweredIndex
+        }
+
+        return min(content.questions.count - 1, max(0, currentQuestionIndex))
+    }
+
+    static func initialSelections(for content: LessonQuizContent) -> [Int: Int] {
+        Dictionary(
+            uniqueKeysWithValues: content.questions.compactMap { question in
+                guard let selectedOptionID = question.selectedOptionID else {
+                    return nil
+                }
+
+                return (question.id, selectedOptionID)
+            }
+        )
+    }
+
+    static func initialQuestionIndex(for content: LessonQuizContent) -> Int {
+        guard !content.questions.isEmpty else { return 0 }
+
+        let selections = initialSelections(for: content)
+
+        if let unansweredIndex = content.questions.firstIndex(where: { selections[$0.id] == nil }) {
+            return unansweredIndex
+        }
+
+        return 0
     }
 }
 

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RecommendationsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var session: SessionViewModel
     @EnvironmentObject private var refreshCenter: AppRefreshCenter
@@ -25,17 +26,21 @@ struct RecommendationsView: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                heroSection
-                statusSection
-                    .padding(.top, 20)
-                pathwaysSection
-                    .padding(.top, 40)
+        VStack(spacing: 0) {
+            topBar
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    heroSection
+                    statusSection
+                        .padding(.top, 20)
+                    pathwaysSection
+                        .padding(.top, 40)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 30)
+                .padding(.bottom, 40)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 30)
-            .padding(.bottom, 40)
         }
         .background(ProgressPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
@@ -59,6 +64,31 @@ struct RecommendationsView: View {
 }
 
 private extension RecommendationsView {
+    var topBar: some View {
+        ZStack(alignment: .bottom) {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .overlay(ProgressPalette.canvas.opacity(0.92))
+        }
+        .frame(height: 96)
+        .overlay(alignment: .leading) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(ProgressPalette.textPrimary)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Go back")
+            .accessibilityHint("Return to the previous screen.")
+            .padding(.leading, 24)
+            .padding(.top, 48)
+            .padding(.bottom, 16)
+        }
+    }
+
     @ViewBuilder
     var heroSection: some View {
         let content = viewModel.content

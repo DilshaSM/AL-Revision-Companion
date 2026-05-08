@@ -15,13 +15,20 @@ struct LessonQuizContent: Hashable {
     var difficulty: String?
     var questions: [Question]
     var nextLesson: SubjectLessonsContent.Lesson?
+    var resumeAttempt: QuizAttemptState?
 
     static func build(
         from payload: TopicQuizPayload,
         lesson: SubjectLessonsContent.Lesson,
         nextLesson: SubjectLessonsContent.Lesson?
     ) -> LessonQuizContent {
-        LessonQuizContent(
+        let savedAnswersByQuestionID = Dictionary(
+            uniqueKeysWithValues: (payload.resumeAttempt?.savedAnswers ?? []).map {
+                ($0.questionId, $0.selectedOptionId)
+            }
+        )
+
+        return LessonQuizContent(
             id: payload.quiz.id,
             quizID: payload.quiz.id,
             subjectID: payload.topic.subjectId,
@@ -42,10 +49,12 @@ struct LessonQuizContent: Hashable {
                         prompt: question.questionText,
                         options: question.options
                             .sorted { $0.orderIndex < $1.orderIndex }
-                            .map { Option(id: $0.id, text: $0.optionText) }
+                            .map { Option(id: $0.id, text: $0.optionText) },
+                        selectedOptionID: savedAnswersByQuestionID[question.id] ?? nil
                     )
                 },
-            nextLesson: nextLesson
+            nextLesson: nextLesson,
+            resumeAttempt: payload.resumeAttempt
         )
     }
 }
@@ -67,6 +76,7 @@ extension LessonQuizContent {
 extension LessonQuizContent {
     var retryVersion: LessonQuizContent {
         var retry = self
+        retry.resumeAttempt = nil
         retry.questions = retry.questions.map { question in
             var question = question
             question.selectedOptionID = nil

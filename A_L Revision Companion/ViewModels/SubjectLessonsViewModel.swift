@@ -69,10 +69,13 @@ final class SubjectLessonsViewModel: ObservableObject {
             try? await widgetSummarySyncService.refresh(context: modelContext)
 
             let quizPayload = try await service.getTopicQuiz(topicID: topic.id)
+            let refreshedLesson = content?.units
+                .flatMap(\.lessons)
+                .first(where: { $0.id == lesson.id }) ?? lesson
             let nextLesson = content?.nextLesson(after: lesson.id)
             return LessonQuizContent.build(
                 from: quizPayload,
-                lesson: lesson,
+                lesson: refreshedLesson,
                 nextLesson: nextLesson
             )
         } catch let error as APIError {

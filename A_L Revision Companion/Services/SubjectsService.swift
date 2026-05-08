@@ -53,6 +53,22 @@ struct SubjectsService {
         )
     }
 
+    func saveQuizProgress(
+        quizID: Int,
+        attemptID: Int,
+        answers: [SubmitQuizAnswerRequest]
+    ) async throws -> SaveQuizProgressPayload {
+        try await client.send(
+            path: "/quizzes/\(quizID)/progress",
+            method: "POST",
+            body: SaveQuizProgressRequest(
+                attemptId: attemptID,
+                answers: answers
+            ),
+            requiresAuth: true
+        )
+    }
+
     func submitQuiz(
         quizID: Int,
         attemptID: Int,

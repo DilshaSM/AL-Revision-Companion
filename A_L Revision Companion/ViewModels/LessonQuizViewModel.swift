@@ -4,7 +4,9 @@ import SwiftData
 @MainActor
 final class LessonQuizViewModel: ObservableObject {
     @Published private(set) var attemptID: Int?
+    @Published private(set) var currentAttempt: QuizAttemptState?
     @Published private(set) var isStartingAttempt = false
+    @Published private(set) var isSavingProgress = false
     @Published private(set) var isSubmitting = false
     @Published private(set) var errorMessage = ""
     @Published private(set) var requiresSignOut = false
@@ -27,18 +29,25 @@ final class LessonQuizViewModel: ObservableObject {
         self.widgetSummarySyncService = widgetSummarySyncService
     }
 
-    func startAttemptIfNeeded(for content: LessonQuizContent) async {
+    func prepareAttemptIfNeeded(for content: LessonQuizContent) async {
         guard startedQuizID != content.quizID else { return }
 
-        isStartingAttempt = true
         errorMessage = ""
         requiresSignOut = false
+
+        if let resumeAttempt = content.resumeAttempt {
+            applyAttempt(resumeAttempt)
+            startedQuizID = content.quizID
+            return
+        }
+
+        isStartingAttempt = true
 
         defer { isStartingAttempt = false }
 
         do {
             let payload = try await service.startQuiz(quizID: content.quizID)
-            attemptID = payload.attemptId
+            applyAttempt(payload)
             startedQuizID = content.quizID
         } catch let error as APIError {
             if error.requiresSignOut {
@@ -48,6 +57,51 @@ final class LessonQuizViewModel: ObservableObject {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func saveProgress(
+        content: LessonQuizContent,
+        selectedOptionIDsByQuestionID: [Int: Int]
+    ) async -> Bool {
+        guard let attemptID else { return false }
+
+        isSavingProgress = true
+        errorMessage = ""
+        requiresSignOut = false
+
+        defer { isSavingProgress = false }
+
+        do {
+            let answers: [SubmitQuizAnswerRequest] = content.questions.compactMap { question in
+                guard let selectedOptionID = selectedOptionIDsByQuestionID[question.id] else {
+                    return nil
+                }
+
+                return SubmitQuizAnswerRequest(
+                    questionId: question.id,
+                    selectedOptionId: selectedOptionID
+                )
+            }
+
+            let payload = try await service.saveQuizProgress(
+                quizID: content.quizID,
+                attemptID: attemptID,
+                answers: answers
+            )
+
+            applyAttempt(payload.attempt)
+            return true
+        } catch let error as APIError {
+            if error.requiresSignOut {
+                requiresSignOut = true
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -107,6 +161,11 @@ final class LessonQuizViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             return nil
         }
+    }
+
+    private func applyAttempt(_ attempt: QuizAttemptState) {
+        currentAttempt = attempt
+        attemptID = attempt.attemptId
     }
 }
 

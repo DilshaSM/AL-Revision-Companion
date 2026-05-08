@@ -19,6 +19,11 @@ final class AppRefreshCenter: ObservableObject {
         recommendationsToken = UUID()
     }
 
+    func didSaveQuizProgress() {
+        subjectsToken = UUID()
+        dashboardToken = UUID()
+    }
+
     func didRecordStudyActivity() {
         dashboardToken = UUID()
         progressToken = UUID()

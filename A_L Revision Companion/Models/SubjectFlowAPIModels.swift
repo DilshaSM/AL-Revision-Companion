@@ -79,6 +79,7 @@ struct OpenLessonSummary: Decodable, Hashable {
 struct TopicQuizPayload: Decodable {
     let topic: QuizTopicSummary
     let quiz: TopicQuiz
+    let resumeAttempt: QuizAttemptState?
 }
 
 struct QuizTopicSummary: Decodable, Hashable {
@@ -112,11 +113,36 @@ struct TopicQuizOption: Decodable, Hashable, Identifiable {
     let orderIndex: Int
 }
 
-struct QuizStartPayload: Decodable, Hashable {
+struct QuizAttemptState: Decodable, Hashable {
     let attemptId: Int
     let quizId: Int
-    let topicId: Int
+    let status: String
     let startedAt: Date
+    let answeredCount: Int
+    let questionCount: Int
+    let progressPercent: Int
+    let savedAnswers: [QuizSavedAnswer]
+    let topicId: Int?
+    let isResumed: Bool?
+}
+
+struct QuizSavedAnswer: Decodable, Hashable {
+    let questionId: Int
+    let selectedOptionId: Int?
+    let isCorrect: Bool?
+    let answeredAt: Date?
+}
+
+typealias QuizStartPayload = QuizAttemptState
+
+struct SaveQuizProgressRequest: Encodable {
+    let attemptId: Int
+    let answers: [SubmitQuizAnswerRequest]
+}
+
+struct SaveQuizProgressPayload: Decodable, Hashable {
+    let attempt: QuizAttemptState
+    let lessonProgress: UserLessonProgress
 }
 
 struct SubmitQuizRequest: Encodable {
