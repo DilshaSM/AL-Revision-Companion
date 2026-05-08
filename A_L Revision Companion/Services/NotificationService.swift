@@ -88,8 +88,8 @@ struct NotificationService {
     func scheduleContinueLearningReminder(
         title: String,
         subjectName: String?,
-        hour: Int = 19,
-        minute: Int = 30
+        hour: Int = 08,
+        minute: Int = 45
     ) async throws {
         let content = UNMutableNotificationContent()
         content.title = "Continue Learning"
@@ -120,8 +120,8 @@ struct NotificationService {
     func scheduleTodaysFocusReminder(
         topicTitle: String,
         reason: String?,
-        hour: Int = 18,
-        minute: Int = 30
+        hour: Int = 07,
+        minute: Int = 06
     ) async throws {
         let content = UNMutableNotificationContent()
         content.title = "Today’s Focus"
@@ -152,8 +152,8 @@ struct NotificationService {
     func scheduleWeakAreaReminder(
         topicTitle: String,
         subjectName: String?,
-        hour: Int = 20,
-        minute: Int = 0
+        hour: Int = 07,
+        minute: Int = 07
     ) async throws {
         let content = UNMutableNotificationContent()
         content.title = "Weak Area Reminder"

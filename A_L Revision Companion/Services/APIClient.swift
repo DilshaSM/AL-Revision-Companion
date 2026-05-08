@@ -24,6 +24,13 @@ enum APIError: LocalizedError {
             return message
         case let .server(message, _):
             return message
+        case let .transport(error as URLError):
+            switch error.code {
+            case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .networkConnectionLost, .timedOut:
+                return "Unable to reach the server right now. Please try again in a moment."
+            default:
+                return error.localizedDescription
+            }
         case let .transport(error):
             return error.localizedDescription
         case let .decoding(error):
@@ -41,13 +48,21 @@ struct APIClient {
 
     init(
         configuration: APIConfiguration = APIConfiguration(),
-        session: URLSession = .shared,
+        session: URLSession = APIClient.makeDefaultSession(),
         tokenStore: KeychainService = .shared
     ) {
         self.configuration = configuration
         self.session = session
         self.tokenStore = tokenStore
         decoder.dateDecodingStrategy = .custom(Self.decodeISO8601Date)
+    }
+
+    private static func makeDefaultSession() -> URLSession {
+        let configuration = URLSessionConfiguration.default
+        configuration.waitsForConnectivity = true
+        configuration.timeoutIntervalForRequest = 60
+        configuration.timeoutIntervalForResource = 120
+        return URLSession(configuration: configuration)
     }
 
     private static func decodeISO8601Date(from decoder: Decoder) throws -> Date {

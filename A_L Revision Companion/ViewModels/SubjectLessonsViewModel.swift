@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 @MainActor
 final class SubjectLessonsViewModel: ObservableObject {
@@ -10,13 +11,16 @@ final class SubjectLessonsViewModel: ObservableObject {
 
     private let subject: SubjectsTabContent.Subject
     private let service: SubjectsService
+    private let widgetSummarySyncService: WidgetSummarySyncService
 
     init(
         subject: SubjectsTabContent.Subject,
-        service: SubjectsService = SubjectsService()
+        service: SubjectsService = SubjectsService(),
+        widgetSummarySyncService: WidgetSummarySyncService = WidgetSummarySyncService()
     ) {
         self.subject = subject
         self.service = service
+        self.widgetSummarySyncService = widgetSummarySyncService
     }
 
     func load(forceRefresh: Bool = false) async {
@@ -42,7 +46,10 @@ final class SubjectLessonsViewModel: ObservableObject {
         }
     }
 
-    func startLesson(_ lesson: SubjectLessonsContent.Lesson) async -> LessonQuizContent? {
+    func startLesson(
+        _ lesson: SubjectLessonsContent.Lesson,
+        modelContext: ModelContext? = nil
+    ) async -> LessonQuizContent? {
         guard let topic = lesson.firstActiveTopic else {
             errorMessage = "No active topic is available for this lesson yet."
             return nil
@@ -58,6 +65,8 @@ final class SubjectLessonsViewModel: ObservableObject {
             if let currentContent = content {
                 content = currentContent.applying(progress: openPayload.lessonProgress)
             }
+
+            try? await widgetSummarySyncService.refresh(context: modelContext)
 
             let quizPayload = try await service.getTopicQuiz(topicID: topic.id)
             let nextLesson = content?.nextLesson(after: lesson.id)

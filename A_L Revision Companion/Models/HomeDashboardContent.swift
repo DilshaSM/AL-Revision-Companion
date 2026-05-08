@@ -500,6 +500,17 @@ private extension HomeDashboardContent {
 }
 
 extension HomeDashboardContent {
+    func applyingLocalContinueLearning(_ summary: WidgetSummaryEntity) -> HomeDashboardContent {
+        guard continueLearning.lessonId == nil,
+              let localContinueLearning = Self.localContinueLearningContent(from: summary) else {
+            return self
+        }
+
+        var updated = self
+        updated.continueLearning = localContinueLearning
+        return updated
+    }
+
     func applyingLocalRecentSubjects(
         _ subjects: [RecentSubjectEntity],
         date: Date = Date()
@@ -527,6 +538,38 @@ extension HomeDashboardContent {
         }
 
         return .init(compactCards: cards, featuredCard: nil)
+    }
+
+    static func localContinueLearningContent(
+        from summary: WidgetSummaryEntity
+    ) -> ContinueLearningContent? {
+        guard let lessonId = summary.continueLessonId,
+              let subjectId = summary.continueSubjectId else {
+            return nil
+        }
+
+        let title = nonEmpty(summary.continueTitle) ?? "Continue your latest lesson"
+        let subtitle = nonEmpty(summary.continueSubtitle)
+        let combinedTitle: String
+
+        if let subtitle, subtitle.caseInsensitiveCompare(title) != .orderedSame {
+            combinedTitle = "\(subtitle):\n\(title)"
+        } else {
+            combinedTitle = title
+        }
+
+        let progressPercent = clampedPercent(summary.continueProgressPercent)
+
+        return .init(
+            eyebrow: "Continue Learning",
+            title: combinedTitle,
+            progress: percentageValue(progressPercent),
+            progressText: "\(progressPercent)%",
+            actionTitle: "Resume",
+            lessonId: lessonId,
+            topicId: summary.continueTopicId,
+            subjectId: subjectId
+        )
     }
 
     private static func accentStyle(for subject: RecentSubjectEntity) -> HomeAccentStyle {

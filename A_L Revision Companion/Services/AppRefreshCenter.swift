@@ -15,6 +15,7 @@ final class AppRefreshCenter: ObservableObject {
     }
 
     func didOpenLesson() {
+        dashboardToken = UUID()
         recommendationsToken = UUID()
     }
 

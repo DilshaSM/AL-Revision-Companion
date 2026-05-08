@@ -58,7 +58,7 @@
 		39F8AED72F923FBF00B4E3D3 /* A_L Revision Companion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "A_L Revision Companion.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		39F8AEE62F923FC200B4E3D3 /* A_L Revision CompanionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "A_L Revision CompanionTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		39F8AEF02F923FC200B4E3D3 /* A_L Revision CompanionUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "A_L Revision CompanionUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7B4A10002F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = ALRevisionCompanionWidget.appex; path = ALRevisionCompanionWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7B4A10002F923FC200B4E3D3 /* ALRevisionCompanionWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = ALRevisionCompanionWidget.appex; path = ALRevisionCompanionWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7B4A10032F923FC200B4E3D3 /* ALRevisionCompanionWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALRevisionCompanionWidget.swift; sourceTree = "<group>"; };
 		7B4A10052F923FC200B4E3D3 /* WidgetEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetEntry.swift; sourceTree = "<group>"; };
 		7B4A10072F923FC200B4E3D3 /* WidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetProvider.swift; sourceTree = "<group>"; };
@@ -509,7 +509,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_API_BASE_URL = "http://192.168.8.104:5001/api";
+				INFOPLIST_KEY_API_BASE_URL = "https://al-revision-companion-be.onrender.com/api";
 				INFOPLIST_KEY_CFBundleDisplayName = "A/L Revision Companion";
 				INFOPLIST_KEY_CFBundleURLTypes_0_CFBundleTypeRole = Editor;
 				INFOPLIST_KEY_CFBundleURLTypes_0_CFBundleURLName = academicatelier;
@@ -546,7 +546,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_API_BASE_URL = "http://192.168.8.104:5001/api";
+				INFOPLIST_KEY_API_BASE_URL = "https://al-revision-companion-be.onrender.com/api";
 				INFOPLIST_KEY_CFBundleDisplayName = "A/L Revision Companion";
 				INFOPLIST_KEY_CFBundleURLTypes_0_CFBundleTypeRole = Editor;
 				INFOPLIST_KEY_CFBundleURLTypes_0_CFBundleURLName = academicatelier;

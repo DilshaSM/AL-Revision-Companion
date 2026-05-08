@@ -36,11 +36,18 @@ final class HomeDashboardViewModel: ObservableObject {
             let payload = try await service.getHome()
             var dashboard = HomeDashboardContent.dashboard(from: payload, for: user)
 
-            if dashboard.recentSubjects.isEmpty,
-               let modelContext,
-               let localSubjects = try? LocalPersistenceService(context: modelContext).loadRecentSubjects(),
-               !localSubjects.isEmpty {
-                dashboard = dashboard.applyingLocalRecentSubjects(localSubjects)
+            if let modelContext {
+                let persistence = LocalPersistenceService(context: modelContext)
+
+                if let localWidgetSummary = try? persistence.loadWidgetSummary() {
+                    dashboard = dashboard.applyingLocalContinueLearning(localWidgetSummary)
+                }
+
+                if dashboard.recentSubjects.isEmpty,
+                   let localSubjects = try? persistence.loadRecentSubjects(),
+                   !localSubjects.isEmpty {
+                    dashboard = dashboard.applyingLocalRecentSubjects(localSubjects)
+                }
             }
 
             content = dashboard
@@ -56,24 +63,38 @@ final class HomeDashboardViewModel: ObservableObject {
             if error.requiresSignOut {
                 requiresSignOut = true
             } else {
-                if content == nil,
-                   let modelContext,
-                   let localSubjects = try? LocalPersistenceService(context: modelContext).loadRecentSubjects(),
-                   !localSubjects.isEmpty {
-                    content = HomeDashboardContent
-                        .placeholder(for: user)
-                        .applyingLocalRecentSubjects(localSubjects)
+                if content == nil, let modelContext {
+                    let persistence = LocalPersistenceService(context: modelContext)
+                    var fallbackContent = HomeDashboardContent.placeholder(for: user)
+
+                    if let localWidgetSummary = try? persistence.loadWidgetSummary() {
+                        fallbackContent = fallbackContent.applyingLocalContinueLearning(localWidgetSummary)
+                    }
+
+                    if let localSubjects = try? persistence.loadRecentSubjects(),
+                       !localSubjects.isEmpty {
+                        fallbackContent = fallbackContent.applyingLocalRecentSubjects(localSubjects)
+                    }
+
+                    content = fallbackContent
                 }
                 errorMessage = error.localizedDescription
             }
         } catch {
-            if content == nil,
-               let modelContext,
-               let localSubjects = try? LocalPersistenceService(context: modelContext).loadRecentSubjects(),
-               !localSubjects.isEmpty {
-                content = HomeDashboardContent
-                    .placeholder(for: user)
-                    .applyingLocalRecentSubjects(localSubjects)
+            if content == nil, let modelContext {
+                let persistence = LocalPersistenceService(context: modelContext)
+                var fallbackContent = HomeDashboardContent.placeholder(for: user)
+
+                if let localWidgetSummary = try? persistence.loadWidgetSummary() {
+                    fallbackContent = fallbackContent.applyingLocalContinueLearning(localWidgetSummary)
+                }
+
+                if let localSubjects = try? persistence.loadRecentSubjects(),
+                   !localSubjects.isEmpty {
+                    fallbackContent = fallbackContent.applyingLocalRecentSubjects(localSubjects)
+                }
+
+                content = fallbackContent
             }
             errorMessage = error.localizedDescription
         }

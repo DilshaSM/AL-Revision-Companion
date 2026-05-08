@@ -290,7 +290,7 @@ private extension SubjectLessonsView {
 
     func handleTapLesson(_ lesson: SubjectLessonsContent.Lesson) {
         Task {
-            guard let quizContent = await viewModel.startLesson(lesson) else {
+            guard let quizContent = await viewModel.startLesson(lesson, modelContext: modelContext) else {
                 if viewModel.requiresSignOut {
                     session.signOut()
                 }
