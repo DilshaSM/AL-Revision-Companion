@@ -60,6 +60,13 @@ struct AudioNotesDetailView: View {
                 AccessibilitySupport.announce(message)
             }
         }
+        .onChange(of: playbackController.audioErrorMessage) { _, message in
+            guard let message, !message.isEmpty else { return }
+            focusedElement = .status
+            Task { @MainActor in
+                AccessibilitySupport.announce(message)
+            }
+        }
         .onChange(of: playbackController.isPlaying) { oldValue, isPlaying in
             handlePlaybackStateChange(oldValue: oldValue, isPlaying: isPlaying)
             guard hasConfiguredPlayer else { return }
@@ -205,7 +212,17 @@ private extension AudioNotesDetailView {
 
             progressSection
 
-            if let content, !playbackController.isAudioAvailable {
+            if playbackController.isPreparingAudio {
+                Text("Preparing audio...")
+                    .font(.footnote)
+                    .foregroundStyle(QuickRevisionPalette.muted)
+                    .accessibilityFocused($focusedElement, equals: .status)
+            } else if let audioErrorMessage = playbackController.audioErrorMessage {
+                Text(audioErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(SubjectsPalette.resultIncorrect)
+                    .accessibilityFocused($focusedElement, equals: .status)
+            } else if let content, !playbackController.isAudioAvailable {
                 Text(content.audioUnavailableMessage)
                     .font(.footnote)
                     .foregroundStyle(SubjectsPalette.resultIncorrect)

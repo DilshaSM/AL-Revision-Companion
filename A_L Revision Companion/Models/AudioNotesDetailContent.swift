@@ -16,8 +16,11 @@ struct AudioNotesDetailContent: Hashable {
     let audioUnavailableMessage: String
 
     var audioURL: URL? {
-        guard let audioURLString else { return nil }
-        return URL(string: audioURLString)
+        guard let audioURLString,
+              !audioURLString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return URL(string: audioURLString.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     var playbackSpeedLabel: String {

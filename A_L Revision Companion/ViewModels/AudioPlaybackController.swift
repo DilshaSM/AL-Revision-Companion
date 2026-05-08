@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import UIKit
 
 @MainActor
 final class AudioPlaybackController: ObservableObject {
@@ -7,12 +8,15 @@ final class AudioPlaybackController: ObservableObject {
     @Published private(set) var duration: Double
     @Published private(set) var isPlaying = false
     @Published private(set) var isAudioAvailable = false
+    @Published private(set) var isPreparingAudio = false
+    @Published private(set) var audioErrorMessage: String?
     @Published private(set) var completionToken = UUID()
 
     private(set) var playbackRate: Float
     private var player: AVPlayer?
     private var timeObserverToken: Any?
     private var playbackEndObserver: NSObjectProtocol?
+    private var playerItemStatusObservation: NSKeyValueObservation?
 
     init(
         sourceURL: URL? = nil,
@@ -26,7 +30,6 @@ final class AudioPlaybackController: ObservableObject {
 
         if let sourceURL {
             configurePlayer(with: sourceURL)
-            isAudioAvailable = true
         }
     }
 
@@ -40,6 +43,8 @@ final class AudioPlaybackController: ObservableObject {
         if let playbackEndObserver {
             NotificationCenter.default.removeObserver(playbackEndObserver)
         }
+
+        playerItemStatusObservation?.invalidate()
     }
 
     var progress: Double {
@@ -53,6 +58,13 @@ final class AudioPlaybackController: ObservableObject {
 
     func play() {
         guard isAudioAvailable, let player else { return }
+
+        do {
+            try Self.activatePlaybackSession()
+        } catch {
+            handlePlaybackFailure(error, fallbackMessage: "Unable to start audio playback.")
+            return
+        }
 
         player.play()
         player.rate = playbackRate
@@ -84,7 +96,9 @@ final class AudioPlaybackController: ObservableObject {
         duration = max(initialDuration, 1)
         self.playbackRate = max(playbackRate, 0.5)
         isPlaying = false
-        isAudioAvailable = sourceURL != nil
+        isAudioAvailable = false
+        isPreparingAudio = sourceURL != nil
+        audioErrorMessage = nil
 
         if let sourceURL {
             configurePlayer(with: sourceURL)
@@ -92,9 +106,29 @@ final class AudioPlaybackController: ObservableObject {
     }
 
     private func configurePlayer(with url: URL) {
-        let item = AVPlayerItem(url: url)
+        let asset = AVURLAsset(url: url, options: [AVURLAssetHTTPUserAgentKey: Self.httpUserAgent])
+        let item = AVPlayerItem(asset: asset)
         let player = AVPlayer(playerItem: item)
         self.player = player
+
+        playerItemStatusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+
+                switch item.status {
+                case .readyToPlay:
+                    self.isPreparingAudio = false
+                    self.isAudioAvailable = true
+                    self.audioErrorMessage = nil
+                case .failed:
+                    self.handlePlaybackFailure(item.error, fallbackMessage: "This audio file could not be loaded.")
+                case .unknown:
+                    self.isPreparingAudio = true
+                @unknown default:
+                    break
+                }
+            }
+        }
 
         let observerInterval = CMTime(seconds: 0.2, preferredTimescale: 600)
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: observerInterval, queue: .main) { [weak self] time in
@@ -153,8 +187,38 @@ final class AudioPlaybackController: ObservableObject {
             NotificationCenter.default.removeObserver(playbackEndObserver)
         }
 
+        playerItemStatusObservation?.invalidate()
         timeObserverToken = nil
         playbackEndObserver = nil
+        playerItemStatusObservation = nil
         player = nil
+        isPreparingAudio = false
+        audioErrorMessage = nil
+        isAudioAvailable = false
+    }
+
+    private func handlePlaybackFailure(_ error: Error?, fallbackMessage: String) {
+        pause()
+        isPreparingAudio = false
+        isAudioAvailable = false
+
+        if let nsError = error as NSError? {
+            let message = nsError.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+            audioErrorMessage = message.isEmpty ? fallbackMessage : message
+            return
+        }
+
+        audioErrorMessage = fallbackMessage
+    }
+
+    private static func activatePlaybackSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .spokenAudio, options: [])
+        try session.setActive(true)
+    }
+
+    private static var httpUserAgent: String {
+        let version = UIDevice.current.systemVersion.replacingOccurrences(of: ".", with: "_")
+        return "Mozilla/5.0 (iPhone; CPU iPhone OS \(version) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(UIDevice.current.systemVersion) Mobile/15E148 Safari/604.1"
     }
 }
