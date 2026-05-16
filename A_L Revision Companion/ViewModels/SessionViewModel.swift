@@ -15,24 +15,24 @@ final class SessionViewModel: ObservableObject {
     @Published private(set) var biometricType: BiometricType = .none
     @Published var streamErrorMessage: String = ""
 
-    private let storage: LocalStorageService
-    private let tokenStore: KeychainService
-    private let authService: AuthService
-    private let streamService: StreamService
-    private let profileService: ProfileService
-    private let biometricAuthService: BiometricAuthService
-    private let widgetSummarySyncService: WidgetSummarySyncService
+    private let storage: LocalStorageServiceProtocol
+    private let tokenStore: KeychainServiceProtocol
+    private let authService: AuthServiceProtocol
+    private let streamService: StreamServiceProtocol
+    private let profileService: ProfileServiceProtocol
+    private let biometricAuthService: BiometricAuthServiceProtocol
+    private let widgetSummarySyncService: WidgetSummarySyncServiceProtocol
     private var modelContext: ModelContext?
     private var hasConfiguredModelContext = false
 
     init(
-        storage: LocalStorageService = .shared,
-        tokenStore: KeychainService = .shared,
-        authService: AuthService = AuthService(),
-        streamService: StreamService = StreamService(),
-        profileService: ProfileService = ProfileService(),
-        biometricAuthService: BiometricAuthService = BiometricAuthService(),
-        widgetSummarySyncService: WidgetSummarySyncService = WidgetSummarySyncService()
+        storage: LocalStorageServiceProtocol = LocalStorageService.shared,
+        tokenStore: KeychainServiceProtocol = KeychainService.shared,
+        authService: AuthServiceProtocol = AuthService(),
+        streamService: StreamServiceProtocol = StreamService(),
+        profileService: ProfileServiceProtocol = ProfileService(),
+        biometricAuthService: BiometricAuthServiceProtocol = BiometricAuthService(),
+        widgetSummarySyncService: WidgetSummarySyncServiceProtocol = WidgetSummarySyncService()
     ) {
         self.storage = storage
         self.tokenStore = tokenStore
@@ -45,6 +45,12 @@ final class SessionViewModel: ObservableObject {
         profileSettings = storage.loadProfileSettings()
         biometricType = biometricAuthService.availableBiometricType()
         updateRoute(for: currentUser)
+
+        #if DEBUG
+        if applyUITestingLaunchConfigurationIfNeeded() {
+            return
+        }
+        #endif
 
         Task { [weak self] in
             await self?.restoreSession()
@@ -463,6 +469,78 @@ final class SessionViewModel: ObservableObject {
 
         authRoute = user.streamId == nil ? .streamSelection : .main
     }
+
+    #if DEBUG
+    private func applyUITestingLaunchConfigurationIfNeeded() -> Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+
+        guard arguments.contains("-ui-testing") else {
+            return false
+        }
+
+        isRestoringSession = false
+        biometricErrorMessage = ""
+        streamErrorMessage = ""
+
+        guard let modeIndex = arguments.firstIndex(of: "-ui-test-mode"),
+              arguments.indices.contains(modeIndex + 1) else {
+            authRoute = .signIn
+            currentUser = nil
+            availableStreams = []
+            return true
+        }
+
+        switch arguments[modeIndex + 1] {
+        case "signIn":
+            currentUser = nil
+            availableStreams = []
+            authRoute = .signIn
+
+        case "streamSelection":
+            currentUser = Self.uiTestingUser(streamId: nil, selectedStream: nil)
+            availableStreams = Self.uiTestingStreams()
+            authRoute = .streamSelection
+
+        case "authenticated":
+            let selectedStream = Self.uiTestingStreams().first
+            currentUser = Self.uiTestingUser(
+                streamId: selectedStream?.id,
+                selectedStream: selectedStream
+            )
+            availableStreams = Self.uiTestingStreams()
+            authRoute = .main
+
+        default:
+            currentUser = nil
+            availableStreams = []
+            authRoute = .signIn
+        }
+
+        return true
+    }
+
+    private static func uiTestingStreams() -> [Stream] {
+        [
+            Stream(id: 1, name: "SCIENCE", description: "Combined Maths, Physics, Chemistry", orderIndex: 1, isActive: true),
+            Stream(id: 2, name: "COMMERCE", description: "Accounting, Economics, Business Studies", orderIndex: 2, isActive: true)
+        ]
+    }
+
+    private static func uiTestingUser(streamId: Int?, selectedStream: Stream?) -> User {
+        User(
+            id: 999,
+            fullName: "UI Test Student",
+            email: "uitest@example.com",
+            streamId: streamId,
+            registrationNumber: "UI-TEST-001",
+            isActive: true,
+            createdAt: nil,
+            updatedAt: nil,
+            selectedStream: selectedStream,
+            preference: ProfileSettings(isFaceIDEnabled: false, areNotificationsEnabled: true)
+        )
+    }
+    #endif
 }
 
 private extension APIError {

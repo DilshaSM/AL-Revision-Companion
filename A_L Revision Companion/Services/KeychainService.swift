@@ -2,6 +2,16 @@ import Foundation
 import LocalAuthentication
 import Security
 
+protocol KeychainServiceProtocol: AnyObject {
+    func saveToken(_ token: String) throws
+    func loadToken() -> String?
+    func removeToken()
+    func saveBiometricToken(_ token: String) throws
+    func loadBiometricToken(using context: LAContext) throws -> String?
+    func hasBiometricToken() -> Bool
+    func removeBiometricToken()
+}
+
 final class KeychainService {
     static let shared = KeychainService()
 
@@ -176,6 +186,8 @@ final class KeychainService {
     }
 }
 
+extension KeychainService: KeychainServiceProtocol {}
+
 enum BiometricType: Equatable {
     case none
     case faceID
@@ -202,6 +214,11 @@ enum BiometricType: Equatable {
             return "lock.shield"
         }
     }
+}
+
+protocol BiometricAuthServiceProtocol {
+    func availableBiometricType() -> BiometricType
+    func authenticate(reason: String) async throws -> LAContext
 }
 
 struct BiometricAuthService {
@@ -267,6 +284,8 @@ struct BiometricAuthService {
         }
     }
 }
+
+extension BiometricAuthService: BiometricAuthServiceProtocol {}
 
 private struct KeychainError: LocalizedError {
     let message: String

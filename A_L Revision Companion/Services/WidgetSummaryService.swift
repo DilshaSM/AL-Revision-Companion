@@ -1,6 +1,12 @@
 import Foundation
 import SwiftData
 
+protocol WidgetSummarySyncServiceProtocol {
+    @MainActor
+    func refresh(context: ModelContext?) async throws
+    func clear()
+}
+
 struct WidgetSummaryService {
     private let client: APIClient
 
@@ -45,6 +51,8 @@ struct WidgetSummarySyncService {
         widgetCacheService.clear()
     }
 }
+
+extension WidgetSummarySyncService: WidgetSummarySyncServiceProtocol {}
 
 extension CachedWidgetSummary {
     init(payload: WidgetSummaryPayload) {

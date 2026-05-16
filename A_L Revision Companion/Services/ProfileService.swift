@@ -1,5 +1,14 @@
 import Foundation
 
+protocol ProfileServiceProtocol {
+    func getProfile() async throws -> CurrentUserPayload
+    func getPreferences() async throws -> PreferencesPayload
+    func updatePreferences(
+        localNotificationsEnabled: Bool?,
+        biometricEnabled: Bool?
+    ) async throws -> PreferencesPayload
+}
+
 struct ProfileService {
     private let client: APIClient
 
@@ -38,3 +47,5 @@ struct ProfileService {
         )
     }
 }
+
+extension ProfileService: ProfileServiceProtocol {}

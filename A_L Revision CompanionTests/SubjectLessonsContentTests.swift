@@ -106,46 +106,42 @@ struct SubjectLessonsContentTests {
 
     @Test
     func lessonStateReflectsLockedCompletedInProgressAndAvailable() {
-        let lockedLesson = SubjectLessonsContent.Lesson(
+        let lockedLesson = makeLesson(
             id: 1,
             title: "Locked",
-            description: nil,
             estimatedDurationMinutes: 10,
             status: "NOT_STARTED",
             progressPercent: 0,
             isLocked: true,
             topics: []
         )
-        let completedLesson = SubjectLessonsContent.Lesson(
+        let completedLesson = makeLesson(
             id: 2,
             title: "Completed",
-            description: nil,
             estimatedDurationMinutes: 12,
             status: "COMPLETED",
             progressPercent: 100,
             isLocked: false,
             topics: []
         )
-        let inProgressLesson = SubjectLessonsContent.Lesson(
+        let inProgressLesson = makeLesson(
             id: 3,
             title: "In Progress",
-            description: nil,
             estimatedDurationMinutes: 12,
             status: "IN_PROGRESS",
             progressPercent: 45,
             isLocked: false,
             topics: []
         )
-        let availableLesson = SubjectLessonsContent.Lesson(
+        let availableLesson = makeLesson(
             id: 4,
             title: "Available",
-            description: nil,
             estimatedDurationMinutes: 8,
             status: "NOT_STARTED",
             progressPercent: 0,
             isLocked: false,
             topics: [
-                .init(id: 41, title: "Active Topic", subtitle: nil, estimatedDurationMinutes: 8, isActive: true)
+                makeTopic(id: 41, title: "Active Topic", estimatedDurationMinutes: 8, orderIndex: 1, isActive: true)
             ]
         )
 
@@ -177,47 +173,44 @@ struct SubjectLessonsContentTests {
 
     @Test
     func applyingProgressUnlocksLessonAndUpdatesHero() {
-        let content = SubjectLessonsContent(
-            id: 1,
-            title: "Chemistry",
-            hero: .init(
-                eyebrow: "Current Study",
-                title: "Chemistry",
-                progress: 0,
-                progressText: "0%",
-                currentLessonTitle: "Lesson 1",
-                backgroundSymbolName: "flask.fill"
-            ),
-            units: [
-                .init(
-                    id: 1,
-                    title: "Unit 1",
-                    description: nil,
-                    lessonCountText: "2 Lessons",
-                    lessons: [
-                        .init(
-                            id: 1,
-                            title: "Lesson 1",
-                            description: nil,
-                            estimatedDurationMinutes: 12,
-                            status: "NOT_STARTED",
-                            progressPercent: 0,
-                            isLocked: false,
-                            topics: [.init(id: 10, title: "Topic 1", subtitle: nil, estimatedDurationMinutes: nil, isActive: true)]
-                        ),
-                        .init(
-                            id: 2,
-                            title: "Lesson 2",
-                            description: nil,
-                            estimatedDurationMinutes: 15,
-                            status: "LOCKED",
-                            progressPercent: 0,
-                            isLocked: true,
-                            topics: [.init(id: 20, title: "Topic 2", subtitle: nil, estimatedDurationMinutes: nil, isActive: true)]
-                        )
-                    ]
-                )
-            ]
+        let content = SubjectLessonsContent.build(
+            from: APISubjectTree(
+                id: 1,
+                name: "chemistry",
+                displayName: "Chemistry",
+                icon: "flask",
+                color: nil,
+                units: [
+                    APISubjectUnit(
+                        id: 1,
+                        title: "Unit 1",
+                        description: nil,
+                        orderIndex: 1,
+                        lessons: [
+                            makeAPILesson(
+                                id: 1,
+                                title: "Lesson 1",
+                                estimatedDurationMinutes: 12,
+                                orderIndex: 1,
+                                topics: [makeTopic(id: 10, title: "Topic 1", estimatedDurationMinutes: nil, orderIndex: 1, isActive: true)],
+                                status: "NOT_STARTED",
+                                progressPercent: 0,
+                                isLocked: false
+                            ),
+                            makeAPILesson(
+                                id: 2,
+                                title: "Lesson 2",
+                                estimatedDurationMinutes: 15,
+                                orderIndex: 2,
+                                topics: [makeTopic(id: 20, title: "Topic 2", estimatedDurationMinutes: nil, orderIndex: 1, isActive: true)],
+                                status: "LOCKED",
+                                progressPercent: 0,
+                                isLocked: true
+                            )
+                        ]
+                    )
+                ]
+            )
         )
 
         let updated = content.applying(
@@ -235,3 +228,68 @@ struct SubjectLessonsContentTests {
     }
 }
 
+private extension SubjectLessonsContentTests {
+    func makeLesson(
+        id: Int,
+        title: String,
+        estimatedDurationMinutes: Int?,
+        status: String,
+        progressPercent: Int,
+        isLocked: Bool,
+        topics: [APISubjectTopic]
+    ) -> SubjectLessonsContent.Lesson {
+        SubjectLessonsContent.Lesson(
+            apiLesson: makeAPILesson(
+                id: id,
+                title: title,
+                estimatedDurationMinutes: estimatedDurationMinutes,
+                orderIndex: id,
+                topics: topics,
+                status: status,
+                progressPercent: progressPercent,
+                isLocked: isLocked
+            )
+        )
+    }
+
+    func makeAPILesson(
+        id: Int,
+        title: String,
+        estimatedDurationMinutes: Int?,
+        orderIndex: Int,
+        topics: [APISubjectTopic],
+        status: String,
+        progressPercent: Int,
+        isLocked: Bool
+    ) -> APISubjectLesson {
+        APISubjectLesson(
+            id: id,
+            title: title,
+            description: nil,
+            estimatedDurationMinutes: estimatedDurationMinutes,
+            orderIndex: orderIndex,
+            isLockedByDefault: isLocked,
+            topics: topics,
+            status: status,
+            progressPercent: progressPercent,
+            isLocked: isLocked
+        )
+    }
+
+    func makeTopic(
+        id: Int,
+        title: String,
+        estimatedDurationMinutes: Int?,
+        orderIndex: Int,
+        isActive: Bool
+    ) -> APISubjectTopic {
+        APISubjectTopic(
+            id: id,
+            title: title,
+            subtitle: nil,
+            estimatedDurationMinutes: estimatedDurationMinutes,
+            orderIndex: orderIndex,
+            isActive: isActive
+        )
+    }
+}

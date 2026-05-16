@@ -1,5 +1,10 @@
 import Foundation
 
+protocol StreamServiceProtocol {
+    func getStreams() async throws -> [Stream]
+    func selectStream(streamID: Int) async throws -> StreamSelectionPayload
+}
+
 struct StreamService {
     private let client: APIClient
 
@@ -26,3 +31,5 @@ struct StreamService {
         )
     }
 }
+
+extension StreamService: StreamServiceProtocol {}

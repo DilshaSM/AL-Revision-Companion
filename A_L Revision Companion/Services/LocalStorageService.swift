@@ -1,5 +1,16 @@
 import Foundation
 
+protocol LocalStorageServiceProtocol: AnyObject {
+    func saveUser(_ user: User)
+    func loadUser() -> User?
+    func saveProfileSettings(_ settings: ProfileSettings)
+    func loadProfileSettings() -> ProfileSettings
+    func saveAudioNotePlaybackState(_ state: AudioNotePlaybackState)
+    func loadAudioNotePlaybackState(audioNoteID: Int) -> AudioNotePlaybackState?
+    func clearAudioNotePlaybackState(audioNoteID: Int)
+    func clearAll()
+}
+
 final class LocalStorageService {
     static let shared = LocalStorageService()
 
@@ -74,3 +85,5 @@ final class LocalStorageService {
         UserDefaults.standard.removeObject(forKey: audioNotePlaybackStateKey)
     }
 }
+
+extension LocalStorageService: LocalStorageServiceProtocol {}

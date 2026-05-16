@@ -1,5 +1,15 @@
 import Foundation
 
+protocol AuthServiceProtocol {
+    func login(email: String, password: String) async throws -> AuthPayload
+    func register(fullName: String, email: String, password: String) async throws -> AuthPayload
+    func forgotPassword(email: String) async throws -> ForgotPasswordPayload
+    func verifyResetCode(email: String, code: String) async throws -> VerifyResetCodePayload
+    func resetPassword(email: String, code: String, newPassword: String) async throws -> ResetPasswordPayload
+    func currentUser() async throws -> CurrentUserPayload
+    func logout() async throws -> LogoutPayload
+}
+
 struct AuthService {
     private let client: APIClient
 
@@ -77,3 +87,5 @@ struct AuthService {
         )
     }
 }
+
+extension AuthService: AuthServiceProtocol {}
